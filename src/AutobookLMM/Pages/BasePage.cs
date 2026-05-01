@@ -72,9 +72,10 @@ public abstract class BasePage(
         try
         {
             var content = await page.ContentAsync();
-            if (content.Contains("tráfego incomum", StringComparison.OrdinalIgnoreCase) || 
-                content.Contains("unusual traffic", StringComparison.OrdinalIgnoreCase) ||
-                content.Contains("solveSimpleChallenge", StringComparison.OrdinalIgnoreCase))
+            if (content.Contains("incomum", StringComparison.OrdinalIgnoreCase) || 
+                content.Contains("unusual", StringComparison.OrdinalIgnoreCase) ||
+                content.Contains("solveSimpleChallenge", StringComparison.OrdinalIgnoreCase) ||
+                content.Contains("captcha", StringComparison.OrdinalIgnoreCase))
             {
                 throw new Exception("Bloqueio de tráfego incomum detectado pelo Google (IP temporariamente barrado).");
             }
