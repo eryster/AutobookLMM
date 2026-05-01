@@ -33,6 +33,7 @@ public class NotebookChat(
     private const string ImageLoadingPreviewSelector = "[data-test-id=\"image-loading-preview\"]";
 
     private int _initialResponseCount;
+    private string _typingBuffer = string.Empty;
 
     /// <inheritdoc />
     public async Task<string> SendMessageAsync(string message, IEnumerable<byte[]>? images = null, Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200)
@@ -87,6 +88,45 @@ public class NotebookChat(
 
             // 4. Submit
             await page.Keyboard.PressAsync("Enter");
+        });
+
+    /// <inheritdoc />
+    public Task TypeMessageAsync(string message, bool pressEnter = false, IEnumerable<byte[]>? images = null) =>
+        RunAsync(async page =>
+        {
+            await page.BringToFrontAsync();
+
+            _initialResponseCount = await page.Locator(ResponseContentSelector).CountAsync();
+
+            var input = page.Locator(ChatInputSelector);
+            await input.WaitForAsync(new() { State = WaitForSelectorState.Visible });
+            await input.FocusAsync();
+
+            // 2. Paste images if any
+            if (images != null)
+            {
+                foreach (var img in images)
+                {
+                    await page.PasteImageAsync(ChatInputSelector, img);
+                }
+                
+                // Wait for all images to finish loading (preview disappears)
+                try
+                {
+                    await page.WaitForSelectorAsync(ImageLoadingPreviewSelector, 
+                        new() { State = WaitForSelectorState.Hidden, Timeout = 10000 });
+                }
+                catch { /* If it never appeared or already disappeared, we continue */ }
+            }
+
+            // 3. Fill text (automatically clears previous text and places the new string)
+            await input.FillAsync(message);
+
+            // 4. Submit
+            if (pressEnter)
+            {
+                await page.Keyboard.PressAsync("Enter");
+            }
         });
 
     /// <inheritdoc />

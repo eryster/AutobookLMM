@@ -29,6 +29,15 @@ public interface IAutobookManager : IAsyncDisposable
     Task<string> SendMessageAsync(string message, IEnumerable<byte[]>? images = null, Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200);
 
     /// <summary>
+    /// Updates the chat input with the provided message text.
+    /// Optionally submits the message by pressing Enter.
+    /// </summary>
+    /// <param name="message">The text to place into the chat input.</param>
+    /// <param name="pressEnter">If true, submits the message immediately after updating.</param>
+    /// <param name="images">Optional list of images to upload.</param>
+    Task TypeMessageAsync(string message, bool pressEnter = false, IEnumerable<byte[]>? images = null);
+
+    /// <summary>
     /// Uploads the provided files as sources to the active notebook.
     /// </summary>
     Task UploadSourcesAsync(List<string> filePaths);

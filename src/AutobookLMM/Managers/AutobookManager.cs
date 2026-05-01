@@ -31,6 +31,13 @@ public class AutobookManager : IAutobookManager
     }
 
     /// <inheritdoc />
+    public async Task TypeMessageAsync(string message, bool pressEnter = false, IEnumerable<byte[]>? images = null)
+    {
+        await EnsureLoggedInAsync();
+        await _session.Chat.TypeMessageAsync(message, pressEnter, images);
+    }
+
+    /// <inheritdoc />
     public async Task UploadSourcesAsync(List<string> filePaths)
     {
         await EnsureLoggedInAsync();
