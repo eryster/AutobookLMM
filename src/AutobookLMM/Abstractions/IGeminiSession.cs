@@ -68,5 +68,5 @@ public interface IGeminiSession : IAsyncDisposable
     /// <summary>
     /// Creates a high-level manager instance for this session.
     /// </summary>
-    IAutobookManager CreateManager();
+    IAutobookManager CreateManager(bool? headless = null);
 }

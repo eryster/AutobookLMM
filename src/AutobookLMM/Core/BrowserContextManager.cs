@@ -21,6 +21,19 @@ public class BrowserContextManager : IAsyncDisposable
     private bool? _currentHeadless = false;
     private readonly SemaphoreSlim _lock = new(1, 1);
 
+    public BrowserContextManager(bool? initialHeadless = null)
+    {
+        _currentHeadless = initialHeadless;
+    }
+
+    public void SetHeadless(bool headless)
+    {
+        if (_currentHeadless != headless)
+        {
+            _currentHeadless = headless;
+        }
+    }
+
     private static readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private static string CookieFilePath => Path.Combine(
@@ -108,7 +121,7 @@ public class BrowserContextManager : IAsyncDisposable
                 Value = c.Value,
                 Domain = c.Domain,
                 Path = c.Path,
-                Expires = (float?)(c.ExpirationDate ?? c.Expires ?? -1),
+                Expires = c.ExpirationDate != null ? (float?)c.ExpirationDate : (c.Expires != null ? (float?)c.Expires : null),
                 HttpOnly = c.HttpOnly ?? false,
                 Secure = c.Secure ?? false,
                 SameSite = c.SameSite?.ToLower() switch

@@ -12,7 +12,7 @@ namespace AutobookLMM.Core;
 /// </summary>
 public class GeminiSession : IGeminiSession
 {
-    private readonly BrowserContextManager _browserManager = new();
+    private readonly BrowserContextManager _browserManager;
 
     private IPage? _notebookPageHandle;
     private IPage? _chatPageHandle;
@@ -38,8 +38,9 @@ public class GeminiSession : IGeminiSession
     /// <summary>
     /// Initializes a new instance of the GeminiSession.
     /// </summary>
-    public GeminiSession()
+    public GeminiSession(bool? headless = null)
     {
+        _browserManager = new BrowserContextManager(headless);
         Notebook = new NotebookPage(GetNotebookPageAsync, _notebookLock, CaptureDebugAsync);
         Chat = new NotebookChat(GetChatPageAsync, _chatLock, CaptureDebugAsync);
         Settings = new SettingsPage(GetSettingsPageAsync, _settingsLock, CaptureDebugAsync);
@@ -48,18 +49,18 @@ public class GeminiSession : IGeminiSession
     /// <inheritdoc />
     public async Task<bool> CheckLoginAsync()
     {
-        var context = await _browserManager.GetContextAsync(forceHeadless: false);
+        var context = await _browserManager.GetContextAsync();
         var page = await BrowserContextManager.GetOrCreatePageAsync(context);
         try
         {
-            await page.GotoAsync("https://gemini.google.com/app", new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded });
+            await page.GotoAsync("https://gemini.google.com/app", new PageGotoOptions { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 30000 });
 
             for (int i = 0; i < 40; i++)
             {
                 await Task.Delay(200);
                 var url = page.Url;
                 if (url.Contains("accounts.google.com")) { await page.CloseAsync(); return false; }
-                if (url.Contains("gemini.google.com") && !url.Contains("signin")) break;
+                if ((url.Contains("gemini.google.com") || url.Contains("notebooklm.google.com")) && !url.Contains("signin")) break;
             }
 
             var loginLink = page.Locator("a[href*='accounts.google.com/ServiceLogin']");
@@ -244,5 +245,12 @@ public class GeminiSession : IGeminiSession
     }
 
     /// <inheritdoc />
-    public IAutobookManager CreateManager() => new AutobookManager(this);
+    public IAutobookManager CreateManager(bool? headless = null)
+    {
+        if (headless.HasValue)
+        {
+            _browserManager.SetHeadless(headless.Value);
+        }
+        return new AutobookManager(this);
+    }
 }

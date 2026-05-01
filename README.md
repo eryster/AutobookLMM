@@ -47,17 +47,20 @@ pwsh bin/Debug/net9.0/playwright.ps1 install chrome
 ## Quick Start
 
 ```csharp
-using AutobookLMM.Core;
+using AutobookLMM.Managers;
 
-// 1. Initialize the session
-var session = new GeminiSession();
+// 1. Initialize the manager directly (supports passing headless mode)
+await using var manager = new AutobookManager(headless: true);
 
-// 2. Setup your workspace (opens all necessary tabs)
-var manager = session.CreateManager();
+// 2. Setup your workspace (opens all necessary tabs and ensures you are logged in)
 await manager.OpenWorkspaceAsync("https://notebooklm.google.com/notebook/your-id");
 
-// 3. Send a message and stream the response
-await foreach (var chunk in session.Chat.StreamResponseAsync())
+// 3. Send a message and wait for the response
+var response = await manager.SendMessageAsync("What is this notebook about?");
+Console.WriteLine(response);
+
+// 4. Alternatively, use the internal low-level Chat tab directly for advanced streaming
+await foreach (var chunk in manager.Chat.StreamResponseAsync())
 {
     Console.Write(chunk);
 }
@@ -68,19 +71,19 @@ await foreach (var chunk in session.Chat.StreamResponseAsync())
 ### Sending Images via Memory
 ```csharp
 byte[] imageBytes = File.ReadAllBytes("chart.png");
-await session.Chat.SendMessageAsync("Analyze this chart", new[] { imageBytes });
+await manager.SendMessageAsync("Analyze this chart", new[] { imageBytes });
 ```
 
 ### Custom Extraction Script
 ```csharp
 var myScript = "el => el.querySelector('.specific-class').innerText";
-var result = await session.Chat.SendMessageAsync("Extract data", extractionScript: myScript);
+var result = await manager.SendMessageAsync("Extract data", extractionScript: myScript);
 ```
 
 ### Rotating Chats (Hard Reset)
 ```csharp
-// Deletes the current chat and opens a fresh one in one go
-var newChatInfo = await manager.RotateChatAsync("Old Conversation Title");
+// Deletes the current chat, starts a fresh one, and sends the first message
+var newChatInfo = await manager.RotateChatAsync("Old Conversation Title", "Hello again!");
 Console.WriteLine($"New Chat URL: {newChatInfo.Url}");
 ```
 
