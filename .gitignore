@@ -1,0 +1,32 @@
+## Visual Studio
+.vs/
+[Bb]in/
+[Oo]bj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## .NET Core
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+## JetBrains (Rider/Resharper)
+.idea/
+*.sln.iml
+
+## VS Code
+.vscode/
+
+## Playwright / AutobookLMM Debug
+.autobooklmm/
+screenshots/
+debug/
+playwright-report/
+test-results/
+
+## OS specific
+.DS_Store
+thumbs.db
+desktop.ini
