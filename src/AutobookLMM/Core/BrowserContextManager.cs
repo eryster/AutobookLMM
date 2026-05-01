@@ -64,13 +64,13 @@ public class BrowserContextManager : IAsyncDisposable
                         "--disable-blink-features=AutomationControlled",
                         "--no-sandbox",
                         "--disable-dev-shm-usage",
-                        "--disable-gpu",
+                        "--enable-gpu",
+                        "--ignore-gpu-blocklist",
+                        "--enable-webgl",
                         "--start-maximized",
                         "--disable-extensions",
                         "--disable-plugins-discovery",
-                        "--disable-infobars",
-                        "--disable-background-timer-throttling",
-                        "--disable-renderer-backgrounding"
+                        "--disable-infobars"
                     },
                     IgnoreDefaultArgs = new[] { "--enable-automation" }
                 };
