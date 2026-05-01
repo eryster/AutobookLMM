@@ -77,23 +77,23 @@ public abstract class BasePage(
                 content.Contains("solveSimpleChallenge", StringComparison.OrdinalIgnoreCase) ||
                 content.Contains("captcha", StringComparison.OrdinalIgnoreCase))
             {
-                throw new Exception("Bloqueio de tráfego incomum detectado pelo Google (IP temporariamente barrado).");
+                throw new Exception("Google detected unusual traffic (IP temporarily blocked).");
             }
 
             if (await page.Locator("#captcha").CountAsync() > 0)
             {
-                throw new Exception("Bloqueio por captcha detectado. Por favor, resolva o captcha no navegador.");
+                throw new Exception("Google captcha challenge detected. Please solve the captcha in the browser.");
             }
 
             foreach (var frame in page.Frames)
             {
                 if (frame.Url.Contains("recaptcha", StringComparison.OrdinalIgnoreCase))
                 {
-                    throw new Exception("Bloqueio por captcha (reCAPTCHA) detectado. Por favor, resolva o captcha no navegador.");
+                    throw new Exception("Google captcha challenge detected. Please solve the captcha in the browser.");
                 }
             }
         }
-        catch (Exception ex) when (ex.Message.Contains("Bloqueio"))
+        catch (Exception ex) when (ex.Message.Contains("Google"))
         {
             throw;
         }
