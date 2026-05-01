@@ -89,13 +89,31 @@ public class NotebookChat(
             await page.Keyboard.PressAsync("Enter");
         });
 
-    public Task TypeMessageAsync(string text, bool pressEnter = false) =>
+    public Task TypeMessageAsync(string text, bool pressEnter = false, IEnumerable<byte[]>? images = null) =>
         RunAsync(async page =>
         {
             await page.BringToFrontAsync();
             var input = page.Locator(ChatInputSelector);
             await input.WaitForAsync(new() { State = WaitForSelectorState.Visible });
             await input.FocusAsync();
+
+            // Paste images if any
+            if (images != null)
+            {
+                foreach (var img in images)
+                {
+                    await page.PasteImageAsync(ChatInputSelector, img);
+                }
+
+                // Wait for all images to finish loading (preview disappears)
+                try
+                {
+                    await page.WaitForSelectorAsync(ImageLoadingPreviewSelector, 
+                        new() { State = WaitForSelectorState.Hidden, Timeout = 10000 });
+                }
+                catch { /* If it never appeared or already disappeared, we continue */ }
+            }
+
             await input.FillAsync(text);
             if (pressEnter)
             {
