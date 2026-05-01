@@ -201,7 +201,7 @@ public class AutobookManager : IAutobookManager
         await newChat.DeleteChatAsync(oldChatTitle);
 
         // 3. Send the first message
-        await newChat.SendMessageAsync(firstMessage, images);
+        var responseText = await newChat.SendMessageAsync(firstMessage, images);
 
         // 4. Small delay to let Gemini update the conversation-title element
         await Task.Delay(1500);
@@ -209,7 +209,8 @@ public class AutobookManager : IAutobookManager
         return new ChatMetadata
         {
             Title = await newChat.GetTitleAsync(),
-            Url = await newChat.GetUrlAsync()
+            Url = await newChat.GetUrlAsync(),
+            LastResponse = responseText
         };
     }
 

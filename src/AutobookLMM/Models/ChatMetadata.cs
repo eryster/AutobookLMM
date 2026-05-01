@@ -15,4 +15,7 @@ public class ChatMetadata
 
     /// <summary>The unique identifier of the chat conversation.</summary>
     public string Id => Url.Split('/').LastOrDefault() ?? string.Empty;
+
+    /// <summary>The last response text generated during message processing.</summary>
+    public string? LastResponse { get; set; }
 }
