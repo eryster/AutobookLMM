@@ -60,10 +60,20 @@ public class AutobookManager : IAutobookManager
     /// <inheritdoc />
     public Task LoginWithCookiesAsync(string cookiesJson) => _session.LoginWithCookiesAsync(cookiesJson);
 
-    public AutobookManager(bool? headless = null)
+    public AutobookManager(bool? headless = null, string? cookiesJson = null)
     {
         _session = new GeminiSession(headless);
         _ownsSession = true;
+
+        if (!string.IsNullOrEmpty(cookiesJson))
+        {
+            string json = cookiesJson.Trim();
+            if (!json.StartsWith("[") && !json.StartsWith("{") && File.Exists(json))
+            {
+                json = File.ReadAllText(json);
+            }
+            _session.LoginWithCookiesAsync(json).GetAwaiter().GetResult();
+        }
     }
 
     public AutobookManager(IGeminiSession session)

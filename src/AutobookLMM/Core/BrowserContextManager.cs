@@ -84,63 +84,17 @@ public class BrowserContextManager : IAsyncDisposable
             if (_context == null)
             {
                 _currentHeadless = headless;
-
-                string? storageStatePath = null;
-                if (File.Exists(CookieFilePath))
-                {
-                    try
-                    {
-                        var json = await File.ReadAllTextAsync(CookieFilePath);
-                        var rawCookies = JsonSerializer.Deserialize<List<CookieDto>>(json, _jsonOptions);
-                        if (rawCookies != null && rawCookies.Count > 0)
-                        {
-                            var mappedCookies = rawCookies.Select(c => new
-                            {
-                                name = c.Name,
-                                value = c.Value,
-                                domain = c.Domain,
-                                path = string.IsNullOrEmpty(c.Path) ? "/" : c.Path,
-                                expires = c.ExpirationDate != null ? (float)c.ExpirationDate : (c.Expires != null ? (float)c.Expires : -1.0f),
-                                httpOnly = c.HttpOnly ?? false,
-                                secure = c.Secure ?? false,
-                                sameSite = string.IsNullOrEmpty(c.SameSite) ? "Lax" : (c.SameSite.ToLower() switch
-                                {
-                                    "strict" => "Strict",
-                                    "lax" => "Lax",
-                                    _ => "None"
-                                })
-                            }).ToList();
-
-                            var storageState = new
-                            {
-                                cookies = mappedCookies,
-                                origins = Array.Empty<object>()
-                            };
-
-                            var tempPath = Path.Combine(Path.GetTempPath(), $"autobooklmm_storage_{Guid.NewGuid()}.json");
-                            await File.WriteAllTextAsync(tempPath, JsonSerializer.Serialize(storageState));
-                            storageStatePath = tempPath;
-                        }
-                    }
-                    catch { }
-                }
-
                 _context = await _browser.NewContextAsync(new BrowserNewContextOptions
                 {
                     UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                     ViewportSize = null,
-                    Locale = CultureInfo.CurrentCulture.Name,
-                    StorageStatePath = storageStatePath
+                    Locale = CultureInfo.CurrentCulture.Name
                 });
-
-                if (storageStatePath != null && File.Exists(storageStatePath))
-                {
-                    try { File.Delete(storageStatePath); } catch { }
-                }
 
                 _context.SetDefaultTimeout(5000);
                 _context.SetDefaultNavigationTimeout(30000);
 
+                await InjectCookiesAsync(_context);
                 _context.Close += (_, _) => { _context = null; };
             }
 
@@ -152,9 +106,35 @@ public class BrowserContextManager : IAsyncDisposable
         }
     }
 
-    private static Task InjectCookiesAsync(IBrowserContext context)
+    private static async Task InjectCookiesAsync(IBrowserContext context)
     {
-        return Task.CompletedTask;
+        if (!File.Exists(CookieFilePath)) return;
+        try
+        {
+            var json = await File.ReadAllTextAsync(CookieFilePath);
+            var rawCookies = JsonSerializer.Deserialize<List<CookieDto>>(json, _jsonOptions);
+            if (rawCookies == null) return;
+
+            var mappedCookies = rawCookies.Select(c => new Cookie
+            {
+                Name = c.Name,
+                Value = c.Value,
+                Domain = c.Domain,
+                Path = c.Path,
+                Expires = c.ExpirationDate != null ? (float?)c.ExpirationDate : (c.Expires != null ? (float?)c.Expires : null),
+                HttpOnly = c.HttpOnly ?? false,
+                Secure = c.Secure ?? false,
+                SameSite = c.SameSite?.ToLower() switch
+                {
+                    "strict" => SameSiteAttribute.Strict,
+                    "lax" => SameSiteAttribute.Lax,
+                    _ => SameSiteAttribute.None
+                }
+            }).ToList();
+
+            await context.AddCookiesAsync(mappedCookies);
+        }
+        catch { }
     }
 
     public async Task CloseAsync()
