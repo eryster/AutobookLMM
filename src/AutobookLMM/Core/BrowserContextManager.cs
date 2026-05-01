@@ -88,23 +88,26 @@ public class BrowserContextManager : IAsyncDisposable
 
             if (_context == null)
             {
+                var locale = System.Globalization.CultureInfo.CurrentCulture.Name;
+                var baseLang = locale.Split('-')[0];
+
                 _currentHeadless = headless;
                 _context = await _browser.NewContextAsync(new BrowserNewContextOptions
                 {
                     UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                     ViewportSize = null,
-                    Locale = "pt-BR"
+                    Locale = locale
                 });
 
-                await _context.AddInitScriptAsync(@"
-                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
-                    window.chrome = { runtime: {}, loadTimes: function(){}, csi: function(){}, app: {} };
-                    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
-                    Object.defineProperty(navigator, 'languages', { get: () => ['pt-BR', 'pt', 'en-US'] });
+                await _context.AddInitScriptAsync($@"
+                    Object.defineProperty(navigator, 'webdriver', {{ get: () => undefined }});
+                    window.chrome = {{ runtime: {{}}, loadTimes: function(){{}}, csi: function(){{}}, app: {{}} }};
+                    Object.defineProperty(navigator, 'plugins', {{ get: () => [1, 2, 3, 4, 5] }});
+                    Object.defineProperty(navigator, 'languages', {{ get: () => ['{locale}', '{baseLang}', 'en-US'] }});
                     const originalQuery = window.navigator.permissions.query;
                     window.navigator.permissions.query = (params) =>
                         params.name === 'notifications'
-                            ? Promise.resolve({ state: Notification.permission })
+                            ? Promise.resolve({{ state: Notification.permission }})
                             : originalQuery(params);
                 ");
 
