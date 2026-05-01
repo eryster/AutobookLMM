@@ -25,6 +25,12 @@ public interface IAutobookManager
     Task OpenWorkspaceAsync(string notebookUrl);
 
     /// <summary>
+    /// Initializes a new chat conversation by sending an initial message.
+    /// This ensures the chat has a valid ID and auto-generated title.
+    /// </summary>
+    Task<ChatMetadata> CreateNewChatAsync(string firstMessage, IEnumerable<byte[]>? images = null);
+
+    /// <summary>
     /// Deletes all chat conversations in the current notebook.
     /// </summary>
     Task ClearChatHistoryAsync();

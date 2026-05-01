@@ -51,7 +51,8 @@ public class BrowserContextManager : IAsyncDisposable
                         "--disable-blink-features=AutomationControlled",
                         "--no-sandbox",
                         "--disable-dev-shm-usage",
-                        "--disable-gpu"
+                        "--disable-gpu",
+                        "--start-maximized"
                     },
                     IgnoreDefaultArgs = new[] { "--enable-automation" }
                 };
@@ -73,7 +74,7 @@ public class BrowserContextManager : IAsyncDisposable
                 _context = await _browser.NewContextAsync(new BrowserNewContextOptions
                 {
                     UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-                    ViewportSize = new ViewportSize { Width = 1920, Height = 1080 },
+                    ViewportSize = null,
                     Locale = CultureInfo.CurrentCulture.Name
                 });
 

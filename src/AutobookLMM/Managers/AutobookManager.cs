@@ -31,7 +31,7 @@ public class AutobookManager(IGeminiSession session) : IAutobookManager
             // The notebook page usually shares the same context as settings for the active notebook
             // but we ensure the session knows which notebook is active if needed.
             _session.SetActiveNotebook(url);
-            
+
             // Navigate settings to the correct place
             await _session.Settings.UpdateSystemPromptAsync(systemInstructions);
         }
@@ -51,14 +51,43 @@ public class AutobookManager(IGeminiSession session) : IAutobookManager
     }
 
     /// <inheritdoc />
+    public async Task<ChatMetadata> CreateNewChatAsync(string firstMessage, IEnumerable<byte[]>? images = null)
+    {
+        // 1. Find or create the target chat instance
+        INotebookChat targetChat;
+        var mainChatUrl = await _session.Chat.GetUrlAsync();
+        
+        if (!mainChatUrl.Contains("/app/"))
+        {
+            targetChat = _session.Chat;
+        }
+        else
+        {
+            targetChat = await _session.OpenChatAsync();
+        }
+
+        // 2. Send the first message and wait for completion (to ensure title is generated)
+        await targetChat.SendMessageAsync(firstMessage, images);
+
+        // 3. Small delay to let Gemini update the conversation-title element
+        await Task.Delay(1500);
+
+        return new ChatMetadata
+        {
+            Title = await targetChat.GetTitleAsync(),
+            Url = await targetChat.GetUrlAsync()
+        };
+    }
+
+    /// <inheritdoc />
     public async Task ClearChatHistoryAsync()
     {
         // We open a temporary background chat tab to perform the cleanup.
         // This ensures any active user conversation in another tab is NOT disturbed.
         await using var worker = await _session.OpenChatAsync();
-        
+
         var chats = await worker.ListChatsAsync();
-        
+
         foreach (var chat in chats)
         {
             await worker.DeleteChatAsync(chat.Title);
@@ -70,10 +99,10 @@ public class AutobookManager(IGeminiSession session) : IAutobookManager
     {
         // 1. Open the new fresh chat
         var newChat = await _session.OpenChatAsync();
-        
+
         // 2. Use the new chat tab to delete the old one
         await newChat.DeleteChatAsync(oldChatTitle);
-        
+
         // 3. Return the new Metadata
         return new ChatMetadata
         {

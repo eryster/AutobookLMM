@@ -10,6 +10,9 @@ using Microsoft.Playwright;
 
 namespace AutobookLMM.Pages;
 
+/// <summary>
+/// Provides operations for interacting with a specific notebook chat tab.
+/// </summary>
 public class NotebookChat(
     Func<Task<IPage>> pageFactory,
     SemaphoreSlim pageLock,
@@ -21,6 +24,7 @@ public class NotebookChat(
     private const string ResponseContentSelector = "[id^=\"model-response-message\"]";
     private const string StopButtonSelector = ".stop";
     private const string LegacyThinkingSelector = ".thinking, pending-request, pending-request-dot-animation, canvas";
+    private const string ConversationTitleSelector = "[data-test-id=\"conversation-title\"]";
 
     // Management Selectors
     private const string ChatTitleSelector = "[data-test-id=\"chat-title\"]";
@@ -32,12 +36,27 @@ public class NotebookChat(
 
     private string? _lastConversationId;
 
+    /// <inheritdoc />
     public async Task<string> SendMessageAsync(string message, IEnumerable<byte[]>? images = null, Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200)
     {
         await SubmitAsync(message, images);
         return await GetResponseAsync(onChunk, extractionScript, timeoutSeconds, pollingIntervalMs);
     }
 
+    /// <inheritdoc />
+    public Task<string> GetTitleAsync() =>
+        RunAsync(async page =>
+        {
+            var locator = page.Locator(ConversationTitleSelector);
+            if (await locator.CountAsync() > 0)
+            {
+                var text = await locator.InnerTextAsync();
+                return text.Trim();
+            }
+            return "Untitled Conversation";
+        });
+
+    /// <inheritdoc />
     public Task SubmitAsync(string message, IEnumerable<byte[]>? images = null) =>
         RunAsync(async page =>
         {
@@ -77,6 +96,7 @@ public class NotebookChat(
             await page.Keyboard.PressAsync("Enter");
         });
 
+    /// <inheritdoc />
     public async Task<string> GetResponseAsync(Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200)
     {
         string lastFullText = "";
@@ -88,6 +108,7 @@ public class NotebookChat(
         return lastFullText;
     }
 
+    /// <inheritdoc />
     public async IAsyncEnumerable<string> StreamResponseAsync(string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200)
     {
         await pageLock.WaitAsync();
@@ -182,6 +203,7 @@ public class NotebookChat(
         }
     }
 
+    /// <inheritdoc />
     public Task<List<ChatMetadata>> ListChatsAsync() =>
         RunAsync(async page =>
         {
@@ -214,6 +236,7 @@ public class NotebookChat(
             return results;
         });
 
+    /// <inheritdoc />
     public Task DeleteChatAsync(string title) =>
         RunAsync(async page =>
         {
@@ -253,6 +276,7 @@ public class NotebookChat(
         catch { return false; }
     }
 
+    /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
         await pageLock.WaitAsync();

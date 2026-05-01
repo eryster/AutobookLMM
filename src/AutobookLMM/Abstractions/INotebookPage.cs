@@ -39,6 +39,9 @@ public interface INotebookPage
     /// <summary>Lists all source titles currently in the notebook.</summary>
     Task<List<string>> ListSourcesAsync();
 
+    /// <summary>Gets the total number of sources currently in the notebook.</summary>
+    Task<int> GetSourceCountAsync();
+
     /// <summary>Removes a source by its title (or copy number).</summary>
     Task DeleteSourceAsync(string title);
 }

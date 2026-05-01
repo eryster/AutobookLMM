@@ -10,6 +10,9 @@ using Microsoft.Playwright;
 
 namespace AutobookLMM.Pages;
 
+/// <summary>
+/// Provides operations for navigating notebooks and managing their sources.
+/// </summary>
 public class NotebookPage(
     Func<Task<IPage>> pageFactory,
     SemaphoreSlim pageLock,
@@ -23,6 +26,7 @@ public class NotebookPage(
     private const string CloseSourcesBtnSelector = "[data-test-id=\"close-button\"]";
     private const string UploadButtonSelector = ".local-file-uploader-button";
 
+    /// <inheritdoc />
     public Task<string> GetTitleAsync() =>
         RunAsync(async page =>
         {
@@ -49,6 +53,7 @@ public class NotebookPage(
             throw new Exception("Could not find notebook title on page.");
         });
 
+    /// <inheritdoc />
     public Task<string> CreateAsync(string name, int account = 0) =>
         RunAsync(async page =>
         {
@@ -75,6 +80,7 @@ public class NotebookPage(
             return page.Url;
         });
 
+    /// <inheritdoc />
     public Task<string> OpenAsync(string name, int account = 0) =>
         RunAsync(async page =>
         {
@@ -93,6 +99,7 @@ public class NotebookPage(
             throw new Exception($"Notebook '{name}' not found.");
         });
 
+    /// <inheritdoc />
     public Task<string> OpenUrlAsync(string url) =>
         RunAsync(async page =>
         {
@@ -109,6 +116,7 @@ public class NotebookPage(
             throw new Exception("The notebook URL is invalid or inaccessible.");
         });
 
+    /// <inheritdoc />
     public Task<List<string>> ListAsync(int account = 0) =>
         RunAsync(async page =>
         {
@@ -124,6 +132,7 @@ public class NotebookPage(
             return titles;
         });
 
+    /// <inheritdoc />
     public Task UploadSourcesAsync(List<string> filePaths) =>
         RunAsync(async page =>
         {
@@ -149,6 +158,7 @@ public class NotebookPage(
             }
         });
 
+    /// <inheritdoc />
     public Task DeleteSourceAsync(string title) =>
         RunAsync(async page =>
         {
@@ -173,6 +183,7 @@ public class NotebookPage(
             await titleLocator.WaitForAsync(new() { State = WaitForSelectorState.Hidden, Timeout = 5000 });
         });
 
+    /// <inheritdoc />
     public Task<List<string>> ListSourcesAsync() =>
         RunAsync(async page =>
         {
@@ -186,6 +197,19 @@ public class NotebookPage(
                 .ToList();
         });
 
+    /// <inheritdoc />
+    public Task<int> GetSourceCountAsync() =>
+        RunAsync(async page =>
+        {
+            if (!await page.IsCurrentlyVisibleAsync(CloseSourcesBtnSelector))
+            {
+                await page.ClickVisibleAsync(EditSourcesBtnSelector);
+                await page.WaitForSelectorAsync(CloseSourcesBtnSelector);
+            }
+            return await page.Locator(SourceTitleSelector).CountAsync();
+        });
+
+    /// <inheritdoc />
     public Task DeleteAllSourcesAsync() =>
         RunAsync(async page =>
         {

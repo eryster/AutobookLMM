@@ -9,6 +9,7 @@
     <Authors>AutobookLMM Team</Authors>
     <Description>Professional modular automation library for Google NotebookLM using Playwright.</Description>
     <PackageId>AutobookLMM</PackageId>
+    <NoWarn>$(NoWarn);1591;1998;9107;IDE0028;IDE0300;IDE0053;IDE0079;CA1816;SYSLIB1045;CA1822</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>

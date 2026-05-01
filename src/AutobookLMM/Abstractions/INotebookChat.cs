@@ -13,6 +13,9 @@ public interface INotebookChat : IAsyncDisposable
     /// <summary>Gets the current URL of the chat page.</summary>
     Task<string> GetUrlAsync();
 
+    /// <summary>Gets the auto-generated title of the current conversation.</summary>
+    Task<string> GetTitleAsync();
+
     /// <summary>
     /// Sends a message (optionally with images) and waits for the full response.
     /// To enable streaming, provide an onChunk callback.

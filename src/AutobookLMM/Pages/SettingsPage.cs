@@ -7,6 +7,9 @@ using Microsoft.Playwright;
 
 namespace AutobookLMM.Pages;
 
+/// <summary>
+/// Provides operations for modifying notebook settings such as title, system prompt, and deletion.
+/// </summary>
 public class SettingsPage(
     Func<Task<IPage>> pageFactory,
     SemaphoreSlim pageLock,
@@ -26,6 +29,7 @@ public class SettingsPage(
     private const string DeleteOptionBtnSelector = "[data-test-id=\"delete-project\"]";
     private const string ConfirmDeleteBtnSelector = "[data-test-id=\"confirm-button\"]";
 
+    /// <inheritdoc />
     public Task DeleteNotebookAsync() =>
         RunAsync(async page =>
         {
@@ -35,6 +39,7 @@ public class SettingsPage(
             await page.WaitForURLAsync("**/notebooks/view**", new() { Timeout = 5000 });
         });
 
+    /// <inheritdoc />
     public Task RenameNotebookAsync(string newName) =>
         RunAsync(async page =>
         {
@@ -55,6 +60,7 @@ public class SettingsPage(
             }
         });
 
+    /// <inheritdoc />
     public Task UpdateSystemPromptAsync(string prompt) =>
         RunAsync(async page =>
         {

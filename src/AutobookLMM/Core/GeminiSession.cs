@@ -1,9 +1,4 @@
-using System;
-using System.IO;
-using System.Linq;
 using System.Text.Json;
-using System.Threading;
-using System.Threading.Tasks;
 using AutobookLMM.Abstractions;
 using AutobookLMM.Models;
 using AutobookLMM.Pages;
@@ -12,10 +7,13 @@ using Microsoft.Playwright;
 
 namespace AutobookLMM.Core;
 
+/// <summary>
+/// Manages the browser lifecycle and underlying page instances for the active Gemini session.
+/// </summary>
 public class GeminiSession : IGeminiSession
 {
     private readonly BrowserContextManager _browserManager = new();
-    
+
     private IPage? _notebookPageHandle;
     private IPage? _chatPageHandle;
     private IPage? _settingsPageHandle;
@@ -25,12 +23,21 @@ public class GeminiSession : IGeminiSession
     private readonly SemaphoreSlim _chatLock = new(1, 1);
     private readonly SemaphoreSlim _settingsLock = new(1, 1);
 
+    /// <summary>The notebook page instance for the current session.</summary>
     public INotebookPage Notebook { get; }
+
+    /// <summary>The chat instance for interacting with the notebook's AI model.</summary>
     public INotebookChat Chat { get; }
+
+    /// <summary>The settings page instance for adjusting system prompt and notebook configuration.</summary>
     public ISettingsPage Settings { get; }
 
+    /// <summary>Returns true if the user profile has been successfully cached or initialized.</summary>
     public bool IsProfileReady => BrowserContextManager.IsProfileReady;
 
+    /// <summary>
+    /// Initializes a new instance of the GeminiSession.
+    /// </summary>
     public GeminiSession()
     {
         Notebook = new NotebookPage(GetNotebookPageAsync, _notebookLock, CaptureDebugAsync);
@@ -38,6 +45,7 @@ public class GeminiSession : IGeminiSession
         Settings = new SettingsPage(GetSettingsPageAsync, _settingsLock, CaptureDebugAsync);
     }
 
+    /// <inheritdoc />
     public async Task<bool> CheckLoginAsync()
     {
         var context = await _browserManager.GetContextAsync(forceHeadless: false);
@@ -67,6 +75,7 @@ public class GeminiSession : IGeminiSession
         }
     }
 
+    /// <inheritdoc />
     public async Task OpenForLoginAsync()
     {
         var tempProfile = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".autobooklmm", "login-profile");
@@ -98,8 +107,13 @@ public class GeminiSession : IGeminiSession
                     var cookies = await loginContext.CookiesAsync();
                     var cookieDtos = cookies.Select(c => new CookieDto
                     {
-                        Name = c.Name, Value = c.Value, Domain = c.Domain, Path = c.Path,
-                        ExpirationDate = c.Expires, Secure = c.Secure, HttpOnly = c.HttpOnly
+                        Name = c.Name,
+                        Value = c.Value,
+                        Domain = c.Domain,
+                        Path = c.Path,
+                        ExpirationDate = c.Expires,
+                        Secure = c.Secure,
+                        HttpOnly = c.HttpOnly
                     }).ToList();
 
                     var json = JsonSerializer.Serialize(cookieDtos);
@@ -115,6 +129,7 @@ public class GeminiSession : IGeminiSession
         }
     }
 
+    /// <inheritdoc />
     public async Task LoginWithCookiesAsync(string cookiesJson)
     {
         var path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.UserProfile), ".autobooklmm", "cookies.json");
@@ -123,8 +138,10 @@ public class GeminiSession : IGeminiSession
         await _browserManager.CloseAsync();
     }
 
+    /// <inheritdoc />
     public Task SetHeadlessAsync(bool headless) => _browserManager.GetContextAsync(forceHeadless: headless);
 
+    /// <inheritdoc />
     public async Task CaptureDebugAsync(string label)
     {
         var page = _notebookPageHandle ?? _chatPageHandle;
@@ -135,14 +152,17 @@ public class GeminiSession : IGeminiSession
         await page.ScreenshotAsync(new PageScreenshotOptions { Path = path, FullPage = true });
     }
 
+    /// <inheritdoc />
     public void SetActiveNotebook(string url) => _activeNotebookUrl = url;
 
+    /// <inheritdoc />
     public async Task PreloadProjectPagesAsync(string url)
     {
         _activeNotebookUrl = url;
         await Task.WhenAll(GetNotebookPageAsync(), GetChatPageAsync(), GetSettingsPageAsync());
     }
 
+    /// <inheritdoc />
     public async Task CloseNotebookAsync()
     {
         _activeNotebookUrl = null;
@@ -163,11 +183,12 @@ public class GeminiSession : IGeminiSession
         return _notebookPageHandle;
     }
 
+    /// <inheritdoc />
     public async Task<INotebookChat> OpenChatAsync(string? url = null)
     {
         var context = await _browserManager.GetContextAsync();
         var page = await context.NewPageAsync();
-        
+
         var targetUrl = url ?? _activeNotebookUrl;
         if (!string.IsNullOrEmpty(targetUrl)) await page.GotoAsync(targetUrl);
 
@@ -175,11 +196,12 @@ public class GeminiSession : IGeminiSession
         return new NotebookChat(() => Task.FromResult(page), lockObj, CaptureDebugAsync);
     }
 
+    /// <inheritdoc />
     public async Task<ISettingsPage> OpenSettingsAsync()
     {
         var context = await _browserManager.GetContextAsync();
         var page = await context.NewPageAsync();
-        
+
         if (!string.IsNullOrEmpty(_activeNotebookUrl)) await page.GotoAsync(_activeNotebookUrl);
 
         var lockObj = new SemaphoreSlim(1, 1);
@@ -210,8 +232,10 @@ public class GeminiSession : IGeminiSession
         return _settingsPageHandle;
     }
 
+    /// <inheritdoc />
     public async ValueTask DisposeAsync() => await _browserManager.DisposeAsync();
 
+    /// <inheritdoc />
     public async Task PurgeProfileAsync()
     {
         await _browserManager.CloseAsync();
@@ -219,5 +243,6 @@ public class GeminiSession : IGeminiSession
         if (File.Exists(path)) File.Delete(path);
     }
 
+    /// <inheritdoc />
     public IAutobookManager CreateManager() => new AutobookManager(this);
 }

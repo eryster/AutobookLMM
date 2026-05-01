@@ -1,8 +1,16 @@
-# AutobookLMM 🚀
+# AutobookLMM `Alpha Version`
+
+[![GitHub license](https://img.shields.io/github/license/eryster/AutobookLMM)](https://github.com/eryster/AutobookLMM/blob/main/LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/eryster/AutobookLMM)](https://github.com/eryster/AutobookLMM/stargazers)
+[![GitHub forks](https://img.shields.io/github/forks/eryster/AutobookLMM)](https://github.com/eryster/AutobookLMM/network)
+
+> [!WARNING]
+> **AutobookLMM** is currently in an **Alpha** state. This library was created solely for **educational and research purposes**. 
+> The authors and contributors are not responsible for any bans, restrictions, or damages that may result from using this automation on Google NotebookLM. Use at your own risk.
 
 **AutobookLMM** is a high-performance, professional modular automation library for **Google NotebookLM**, built on top of .NET 9 and Playwright. It allows developers to orchestrate complex AI workflows, manage multiple chat sessions, and extract structured data from NotebookLM with ease.
 
-## 🌟 Key Features
+## Key Features
 
 - **Professional Modular Architecture**: Separate abstractions for Notebook management, Chat interactions, and Settings.
 - **Intelligent Multi-Tab Support**: Run background tasks (like clearing history) without interrupting your active session.
@@ -14,20 +22,29 @@
 - **Smart Workspace Setup**: Open Notebook, Chat, and Settings tabs simultaneously with one command.
 - **Full Metadata Support**: Returns rich objects with IDs and URLs for easy database integration.
 
-## 🛠 Installation
+## Installation Tutorial
 
-1. **Clone the repository** and add the project reference to your solution:
-   ```bash
-   dotnet add reference path/to/AutobookLMM.csproj
-   ```
+To install and integrate **AutobookLMM** into your project, follow the instructions below using the official GitHub repository source:
 
-2. **Install Playwright Browsers**:
-   Since this library uses Playwright, you need to ensure the browsers are installed on your environment:
-   ```bash
-   pwsh bin/Debug/net9.0/playwright.ps1 install chrome
-   ```
+### 1. Clone the repository
+Clone the official repository from GitHub:
+```bash
+git clone https://github.com/eryster/AutobookLMM.git
+```
 
-## 🚀 Quick Start
+### 2. Add Project Reference
+Add the project reference to your own solution or project:
+```bash
+dotnet add your-project.csproj reference path/to/AutobookLMM/src/AutobookLMM/AutobookLMM.csproj
+```
+
+### 3. Install Playwright Browsers
+Since **AutobookLMM** uses Playwright under the hood, make sure to install the Chrome browser:
+```bash
+pwsh bin/Debug/net9.0/playwright.ps1 install chrome
+```
+
+## Quick Start
 
 ```csharp
 using AutobookLMM.Core;
@@ -46,7 +63,7 @@ await foreach (var chunk in session.Chat.StreamResponseAsync())
 }
 ```
 
-## 🧠 Advanced Usage
+## Advanced Usage
 
 ### Sending Images via Memory
 ```csharp
@@ -67,13 +84,13 @@ var newChatInfo = await manager.RotateChatAsync("Old Conversation Title");
 Console.WriteLine($"New Chat URL: {newChatInfo.Url}");
 ```
 
-## 📂 Project Structure
+## Project Structure
 
 - **Core**: Manages the browser lifecycle and session state.
 - **Abstractions**: Clean interfaces for easy mocking and testing.
 - **Pages**: Low-level implementation of NotebookLM UI interactions.
 - **Managers**: High-level orchestrators for complex workflows.
 
-## ⚖️ License
+## License
 
-This project is licensed under the MIT License.
+This project is licensed under the MIT License. See [LICENSE](https://github.com/eryster/AutobookLMM/blob/main/LICENSE) for more information.
