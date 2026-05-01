@@ -27,6 +27,9 @@ public interface INotebookChat : IAsyncDisposable
     /// <summary>Sends a message and optionally multiple images without waiting for the response.</summary>
     Task SubmitAsync(string message, IEnumerable<byte[]>? images = null);
 
+    /// <summary>Types message directly into input field.</summary>
+    Task TypeMessageAsync(string text, bool pressEnter = false);
+
     /// <summary>Waits for the current generation to finish and extracts the text.</summary>
     Task<string> GetResponseAsync(Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200);
 

@@ -89,6 +89,20 @@ public class NotebookChat(
             await page.Keyboard.PressAsync("Enter");
         });
 
+    public Task TypeMessageAsync(string text, bool pressEnter = false) =>
+        RunAsync(async page =>
+        {
+            await page.BringToFrontAsync();
+            var input = page.Locator(ChatInputSelector);
+            await input.WaitForAsync(new() { State = WaitForSelectorState.Visible });
+            await input.FocusAsync();
+            await input.FillAsync(text);
+            if (pressEnter)
+            {
+                await page.Keyboard.PressAsync("Enter");
+            }
+        });
+
     /// <inheritdoc />
     public async Task<string> GetResponseAsync(Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200)
     {
