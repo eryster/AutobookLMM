@@ -68,7 +68,7 @@ public class AutobookManager : IAutobookManager
         if (!string.IsNullOrEmpty(cookiesJson))
         {
             string json = cookiesJson.Trim();
-            if (!json.StartsWith("[") && !json.StartsWith("{") && File.Exists(json))
+            if (!json.StartsWith('[') && !json.StartsWith('{') && File.Exists(json))
             {
                 json = File.ReadAllText(json);
             }
