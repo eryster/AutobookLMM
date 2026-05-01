@@ -1,5 +1,8 @@
 using AutobookLMM.Extensions;
 using Microsoft.Playwright;
+using System;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace AutobookLMM.Pages;
 
@@ -17,7 +20,9 @@ public abstract class BasePage(
         await pageLock.WaitAsync();
         try
         {
-            return await action(await pageFactory());
+            var page = await pageFactory();
+            await CheckForGoogleBlocksAsync(page);
+            return await action(page);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -35,7 +40,9 @@ public abstract class BasePage(
         await pageLock.WaitAsync();
         try
         {
-            await action(await pageFactory());
+            var page = await pageFactory();
+            await CheckForGoogleBlocksAsync(page);
+            await action(page);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {
@@ -52,10 +59,40 @@ public abstract class BasePage(
     {
         await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded });
         await page.SmartSettleAsync();
+        await CheckForGoogleBlocksAsync(page);
 
         if (!string.IsNullOrEmpty(waitForSelector))
         {
             await page.WaitForSelectorAsync(waitForSelector, new() { State = WaitForSelectorState.Visible, Timeout = 5000 });
+        }
+    }
+
+    protected async Task CheckForGoogleBlocksAsync(IPage page)
+    {
+        try
+        {
+            var content = await page.ContentAsync();
+            if (content.Contains("tráfego incomum", StringComparison.OrdinalIgnoreCase) || 
+                content.Contains("unusual traffic", StringComparison.OrdinalIgnoreCase))
+            {
+                throw new Exception("Bloqueio de tráfego incomum detectado pelo Google (IP temporariamente barrado).");
+            }
+
+            foreach (var frame in page.Frames)
+            {
+                if (frame.Url.Contains("recaptcha", StringComparison.OrdinalIgnoreCase))
+                {
+                    throw new Exception("Bloqueio por captcha (reCAPTCHA) detectado. Por favor, resolva o captcha no navegador.");
+                }
+            }
+        }
+        catch (Exception ex) when (ex.Message.Contains("Bloqueio"))
+        {
+            throw;
+        }
+        catch
+        {
+            // Squelch other errors
         }
     }
 

@@ -19,8 +19,6 @@ public class NotebookChat(
     Func<string, Task>? onDebug = null) : BasePage(pageFactory, pageLock, "chat", onDebug), INotebookChat
 {
     private const string ChatInputSelector = ".new-input-ui";
-    private const string HistoryContainerSelector = "[data-test-id=\"chat-history-container\"]";
-    private const string ConversationContainerSelector = ".conversation-container";
     private const string ResponseContentSelector = "[id^=\"model-response-message\"]";
     private const string StopButtonSelector = ".stop";
     private const string LegacyThinkingSelector = ".thinking, pending-request, pending-request-dot-animation, canvas";
@@ -34,7 +32,7 @@ public class NotebookChat(
     private const string ImageUploadBtnSelector = "[data-test-id=\"upload-image-button\"], button[aria-label*=\"image\"]";
     private const string ImageLoadingPreviewSelector = "[data-test-id=\"image-loading-preview\"]";
 
-    private string? _lastConversationId;
+    private int _initialResponseCount;
 
     /// <inheritdoc />
     public async Task<string> SendMessageAsync(string message, IEnumerable<byte[]>? images = null, Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200)
@@ -56,17 +54,12 @@ public class NotebookChat(
             return "Untitled Conversation";
         });
 
-    /// <inheritdoc />
     public Task SubmitAsync(string message, IEnumerable<byte[]>? images = null) =>
         RunAsync(async page =>
         {
             await page.BringToFrontAsync();
 
-            // 1. Snapshot for response detection
-            var lastContainer = page.Locator($"{HistoryContainerSelector} {ConversationContainerSelector}").Last;
-            _lastConversationId = await lastContainer.CountAsync() > 0
-                ? await lastContainer.GetAttributeAsync("id")
-                : null;
+            _initialResponseCount = await page.Locator(ResponseContentSelector).CountAsync();
 
             var input = page.Locator(ChatInputSelector);
             await input.WaitForAsync(new() { State = WaitForSelectorState.Visible });
@@ -108,32 +101,30 @@ public class NotebookChat(
         return lastFullText;
     }
 
-    /// <inheritdoc />
     public async IAsyncEnumerable<string> StreamResponseAsync(string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200)
     {
         await pageLock.WaitAsync();
         try
         {
             var page = await pageFactory();
-            var history = page.Locator(HistoryContainerSelector);
-            var lastContainer = history.Locator(ConversationContainerSelector).Last;
-            var responseLocator = lastContainer.Locator(ResponseContentSelector).First;
+            var responseLocator = page.Locator(ResponseContentSelector).Last;
             var script = extractionScript ?? ExtractionScript;
 
-            // 1. Wait for a new container to appear
+            // 1. Wait for a new response element to appear
             DateTime syncStart = DateTime.Now;
-            bool newContainerFound = false;
+            bool newResponseFound = false;
             while ((DateTime.Now - syncStart).TotalSeconds < 30)
             {
-                if (await lastContainer.CountAsync() > 0)
+                var currentCount = await page.Locator(ResponseContentSelector).CountAsync();
+                if (currentCount > _initialResponseCount)
                 {
-                    var currentId = await lastContainer.GetAttributeAsync("id");
-                    if (currentId != _lastConversationId) { newContainerFound = true; break; }
+                    newResponseFound = true;
+                    break;
                 }
                 await Task.Delay(200);
             }
 
-            if (!newContainerFound) throw new TimeoutException("Gemini response did not start in time.");
+            if (!newResponseFound) throw new TimeoutException("Gemini response did not start in time.");
 
             // 2. Wait for the response content to start appearing
             DateTime triggerStart = DateTime.Now;
@@ -154,42 +145,27 @@ public class NotebookChat(
             // 3. Poll for chunks
             string lastText = "";
             DateTime pollStart = DateTime.Now;
-            DateTime lastChange = DateTime.Now;
-
-            var streamTask = page.WaitForResponseAsync(r => 
-                r.Url.Contains("batchexecute") || r.Url.Contains("StreamGenerate"), 
-                new() { Timeout = 5000 });
-
-            IResponse? streamingResponse = null;
 
             while ((DateTime.Now - pollStart).TotalSeconds < timeoutSeconds)
             {
                 string textNow = "";
-                try { textNow = await lastContainer.EvaluateAsync<string>(ExtractionScript); }
+                try { textNow = await responseLocator.EvaluateAsync<string>(script); }
                 catch { await Task.Delay(pollingIntervalMs); continue; }
 
                 if (!string.IsNullOrEmpty(textNow) && textNow != lastText)
                 {
                     lastText = textNow;
                     yield return lastText.Trim();
-                    lastChange = DateTime.Now;
                 }
 
                 bool uiGenerating = await IsGenerating(page);
                 if (!uiGenerating)
                 {
-                    if (streamingResponse == null && streamTask.IsCompletedSuccessfully)
-                    {
-                        try { streamingResponse = await streamTask; } catch { }
-                    }
-
-                    if (streamingResponse == null || streamingResponse.FinishedAsync().IsCompleted)
-                    {
-                        await Task.Delay(300);
-                        // Final extraction using the (possibly custom) script
-                        yield return (await lastContainer.EvaluateAsync<string>(script)).Trim();
-                        yield break;
-                    }
+                    await Task.Delay(500);
+                    // Final extraction
+                    try { textNow = await responseLocator.EvaluateAsync<string>(script); } catch { }
+                    yield return textNow.Trim();
+                    yield break;
                 }
 
                 await Task.Delay(pollingIntervalMs);
