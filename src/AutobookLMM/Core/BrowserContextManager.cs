@@ -65,7 +65,12 @@ public class BrowserContextManager : IAsyncDisposable
                         "--no-sandbox",
                         "--disable-dev-shm-usage",
                         "--disable-gpu",
-                        "--start-maximized"
+                        "--start-maximized",
+                        "--disable-extensions",
+                        "--disable-plugins-discovery",
+                        "--disable-infobars",
+                        "--disable-background-timer-throttling",
+                        "--disable-renderer-backgrounding"
                     },
                     IgnoreDefaultArgs = new[] { "--enable-automation" }
                 };
@@ -88,8 +93,20 @@ public class BrowserContextManager : IAsyncDisposable
                 {
                     UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
                     ViewportSize = null,
-                    Locale = CultureInfo.CurrentCulture.Name
+                    Locale = "pt-BR"
                 });
+
+                await _context.AddInitScriptAsync(@"
+                    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
+                    window.chrome = { runtime: {}, loadTimes: function(){}, csi: function(){}, app: {} };
+                    Object.defineProperty(navigator, 'plugins', { get: () => [1, 2, 3, 4, 5] });
+                    Object.defineProperty(navigator, 'languages', { get: () => ['pt-BR', 'pt', 'en-US'] });
+                    const originalQuery = window.navigator.permissions.query;
+                    window.navigator.permissions.query = (params) =>
+                        params.name === 'notifications'
+                            ? Promise.resolve({ state: Notification.permission })
+                            : originalQuery(params);
+                ");
 
                 _context.SetDefaultTimeout(5000);
                 _context.SetDefaultNavigationTimeout(30000);
