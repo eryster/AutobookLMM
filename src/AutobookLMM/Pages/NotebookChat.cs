@@ -25,6 +25,7 @@ public class NotebookChat(
     private const string ConversationTitleSelector = "[data-test-id=\"conversation-title\"]";
 
     // Management Selectors
+    private const string ChatRowContainerSelector = ".project-chat-row-container";
     private const string ChatTitleSelector = "[data-test-id=\"chat-title\"]";
     private const string ChatMenuBtnSelector = ".menu-button";
     private const string ChatDeleteBtnSelector = "[data-test-id=\"delete-button\"]";
@@ -255,11 +256,11 @@ public class NotebookChat(
 
             try
             {
-                await page.Locator(".project-chat-row-container").First.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 5000 });
+                await page.Locator(ChatRowContainerSelector).First.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 5000 });
             }
             catch { }
 
-            var allChats = await page.Locator(".project-chat-row-container").AllAsync();
+            var allChats = await page.Locator(ChatRowContainerSelector).AllAsync();
             ILocator? chatItem = null;
             foreach (var loc in allChats)
             {
@@ -304,11 +305,11 @@ public class NotebookChat(
 
             try
             {
-                await page.Locator(".project-chat-row-container").First.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 5000 });
+                await page.Locator(ChatRowContainerSelector).First.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 5000 });
             }
             catch { }
 
-            var allChats = await page.Locator(".project-chat-row-container").AllAsync();
+            var allChats = await page.Locator(ChatRowContainerSelector).AllAsync();
             ILocator? chatItem = null;
             foreach (var loc in allChats)
             {
