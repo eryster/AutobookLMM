@@ -24,7 +24,7 @@ public class AutobookManager : IAutobookManager
     public bool IsProfileReady => _session.IsProfileReady;
 
     /// <inheritdoc />
-    public async Task<string> SendMessageAsync(string message, IEnumerable<byte[]>? images = null, Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200)
+    public async Task<string> SendMessageAsync(string message, IEnumerable<byte[]>? images = null, Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200, CancellationToken cancellationToken = default)
     {
         await EnsureLoggedInAsync();
         string? chatTitle = null;
@@ -62,41 +62,42 @@ public class AutobookManager : IAutobookManager
     }
 
     /// <inheritdoc />
-    public async Task PasteImagesAsync(IEnumerable<byte[]> images)
+    public async Task PasteImagesAsync(IEnumerable<byte[]> images, CancellationToken cancellationToken = default)
     {
         await EnsureLoggedInAsync();
         await _session.Chat.PasteImagesAsync(images);
     }
 
     /// <inheritdoc />
-    public async Task UploadSourcesAsync(List<string> filePaths)
+    public async Task UploadSourcesAsync(List<string> filePaths, CancellationToken cancellationToken = default)
     {
         await EnsureLoggedInAsync();
+        AutobookLMM.Validators.SourceValidator.Validate(filePaths);
         await _session.Notebook.UploadSourcesAsync(filePaths);
     }
 
     /// <inheritdoc />
-    public async Task<List<ChatMetadata>> ListChatsAsync()
+    public async Task<List<ChatMetadata>> ListChatsAsync(CancellationToken cancellationToken = default)
     {
         await EnsureLoggedInAsync();
         return await _session.Chat.ListChatsAsync();
     }
 
     /// <inheritdoc />
-    public async Task DeleteChatAsync(string title)
+    public async Task DeleteChatAsync(string title, CancellationToken cancellationToken = default)
     {
         await EnsureLoggedInAsync();
         await _session.Chat.DeleteChatAsync(title);
     }
 
     /// <inheritdoc />
-    public Task<bool> CheckLoginAsync() => _session.CheckLoginAsync();
+    public Task<bool> CheckLoginAsync(CancellationToken cancellationToken = default) => _session.CheckLoginAsync();
 
     /// <inheritdoc />
-    public Task OpenForLoginAsync() => _session.OpenForLoginAsync();
+    public Task OpenForLoginAsync(CancellationToken cancellationToken = default) => _session.OpenForLoginAsync();
 
     /// <inheritdoc />
-    public Task LoginWithCookiesAsync(string cookiesJson) => _session.LoginWithCookiesAsync(cookiesJson);
+    public Task LoginWithCookiesAsync(string cookiesJson, CancellationToken cancellationToken = default) => _session.LoginWithCookiesAsync(cookiesJson);
 
     public AutobookManager(bool? headless = null, string? cookiesJson = null)
     {
@@ -112,6 +113,12 @@ public class AutobookManager : IAutobookManager
             }
             _session.LoginWithCookiesAsync(json).GetAwaiter().GetResult();
         }
+    }
+
+    public AutobookManager(AutobookOptions options)
+    {
+        _session = new GeminiSession(options ?? throw new ArgumentNullException(nameof(options)));
+        _ownsSession = true;
     }
 
     public AutobookManager(IGeminiSession session)
@@ -139,9 +146,14 @@ public class AutobookManager : IAutobookManager
     }
 
     /// <inheritdoc />
-    public async Task<NotebookMetadata> InitializeNotebookAsync(string name, List<string> filePaths, string? systemInstructions = null)
+    public async Task<NotebookMetadata> InitializeNotebookAsync(string name, List<string> filePaths, string? systemInstructions = null, CancellationToken cancellationToken = default)
     {
         await EnsureLoggedInAsync();
+
+        if (filePaths is { Count: > 0 })
+        {
+            AutobookLMM.Validators.SourceValidator.Validate(filePaths);
+        }
 
         // 1. Create the notebook
         var url = await _session.Notebook.CreateAsync(name);
@@ -171,7 +183,7 @@ public class AutobookManager : IAutobookManager
     }
 
     /// <inheritdoc />
-    public async Task OpenWorkspaceAsync(string notebookUrl)
+    public async Task OpenWorkspaceAsync(string notebookUrl, CancellationToken cancellationToken = default)
     {
         await EnsureLoggedInAsync();
 
@@ -180,7 +192,7 @@ public class AutobookManager : IAutobookManager
     }
 
     /// <inheritdoc />
-    public async Task<ChatMetadata> CreateNewChatAsync(string firstMessage, IEnumerable<byte[]>? images = null)
+    public async Task<ChatMetadata> CreateNewChatAsync(string firstMessage, IEnumerable<byte[]>? images = null, CancellationToken cancellationToken = default)
     {
         await EnsureLoggedInAsync();
 
@@ -211,7 +223,7 @@ public class AutobookManager : IAutobookManager
     }
 
     /// <inheritdoc />
-    public async Task ClearChatHistoryAsync()
+    public async Task ClearChatHistoryAsync(CancellationToken cancellationToken = default)
     {
         await EnsureLoggedInAsync();
 
@@ -228,7 +240,7 @@ public class AutobookManager : IAutobookManager
     }
 
     /// <inheritdoc />
-    public async Task<ChatMetadata> RotateChatAsync(string oldChatTitle, string firstMessage, IEnumerable<byte[]>? images = null)
+    public async Task<ChatMetadata> RotateChatAsync(string oldChatTitle, string firstMessage, IEnumerable<byte[]>? images = null, CancellationToken cancellationToken = default)
     {
         await EnsureLoggedInAsync();
 
@@ -270,10 +282,39 @@ public class AutobookManager : IAutobookManager
     }
 
     /// <inheritdoc />
-    public async Task UpdateSystemPromptAsync(string systemInstructions)
+    public async Task UpdateSystemPromptAsync(string systemInstructions, CancellationToken cancellationToken = default)
     {
         await EnsureLoggedInAsync();
         await _session.Settings.UpdateSystemPromptAsync(systemInstructions);
+    }
+
+    /// <inheritdoc />
+    public async Task DeleteNotebookAsync(string notebookUrl, CancellationToken cancellationToken = default)
+    {
+        await EnsureLoggedInAsync();
+        await _session.Notebook.DeleteAsync(notebookUrl, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task RenameNotebookAsync(string newName, CancellationToken cancellationToken = default)
+    {
+        await EnsureLoggedInAsync();
+        await _session.Notebook.RenameAsync(newName, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<List<string>> ListNotebooksAsync(CancellationToken cancellationToken = default)
+    {
+        await EnsureLoggedInAsync();
+        return await _session.Notebook.ListAsync(0, cancellationToken);
+    }
+
+    /// <inheritdoc />
+    public async Task<bool> IsChatOpenAsync(string chatTitle, CancellationToken cancellationToken = default)
+    {
+        await EnsureLoggedInAsync();
+        var chats = await _session.Chat.ListChatsAsync();
+        return chats.Any(c => string.Equals(c.Title, chatTitle, StringComparison.OrdinalIgnoreCase));
     }
 
     /// <inheritdoc />

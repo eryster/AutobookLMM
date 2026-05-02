@@ -1,4 +1,5 @@
 using AutobookLMM.Extensions;
+using AutobookLMM.Abstractions;
 using Microsoft.Playwright;
 using System;
 using System.Threading;
@@ -13,7 +14,7 @@ public abstract class BasePage(
     Func<Task<IPage>> pageFactory,
     SemaphoreSlim pageLock,
     string debugPrefix,
-    Func<string, Task>? onDebug = null)
+    Func<string, Task>? onDebug = null) : IBasePage
 {
     protected async Task<T> RunAsync<T>(Func<IPage, Task<T>> action)
     {
@@ -104,5 +105,8 @@ public abstract class BasePage(
     }
 
     /// <summary>Gets the current URL of the page.</summary>
-    public Task<string> GetUrlAsync() => RunAsync(async page => page.Url);
+    public Task<string> GetUrlAsync(CancellationToken cancellationToken = default) => RunAsync(async page => page.Url);
+
+    /// <summary>Navigates the page to the specific URL.</summary>
+    public Task NavigateToUrlAsync(string url, CancellationToken cancellationToken = default) => RunAsync(page => NavigateAsync(page, url));
 }

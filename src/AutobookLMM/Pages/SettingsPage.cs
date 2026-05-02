@@ -30,7 +30,7 @@ public class SettingsPage(
     private const string ConfirmDeleteBtnSelector = "[data-test-id=\"confirm-button\"]";
 
     /// <inheritdoc />
-    public Task DeleteNotebookAsync() =>
+    public Task DeleteNotebookAsync(CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             await EnsureMenuOpenAsync(page);
@@ -40,7 +40,7 @@ public class SettingsPage(
         });
 
     /// <inheritdoc />
-    public Task RenameNotebookAsync(string newName) =>
+    public Task RenameNotebookAsync(string newName, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             await EnsureMenuOpenAsync(page);
@@ -61,7 +61,7 @@ public class SettingsPage(
         });
 
     /// <inheritdoc />
-    public Task UpdateSystemPromptAsync(string prompt) =>
+    public Task UpdateSystemPromptAsync(string prompt, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             await EnsureMenuOpenAsync(page);

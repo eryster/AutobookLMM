@@ -27,13 +27,13 @@ public class NotebookPage(
     private const string UploadButtonSelector = ".local-file-uploader-button";
 
     /// <inheritdoc />
-    public Task<string> GetTitleAsync() =>
+    public Task<string> GetTitleAsync(CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             string[] selectors = [".gds-title-l.title", "header h1", ".notebook-title", ".title"];
             foreach (var selector in selectors)
             {
-                try 
+                try
                 {
                     var locator = page.Locator(selector).First;
                     if (await locator.IsVisibleAsync())
@@ -41,7 +41,8 @@ public class NotebookPage(
                         var text = await locator.InnerTextAsync();
                         if (!string.IsNullOrWhiteSpace(text)) return text.Trim();
                     }
-                } catch { }
+                }
+                catch { }
             }
 
             var pageTitle = await page.TitleAsync();
@@ -54,7 +55,7 @@ public class NotebookPage(
         });
 
     /// <inheritdoc />
-    public Task<string> CreateAsync(string name, int account = 0) =>
+    public Task<string> CreateAsync(string name, int account = 0, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             await NavigateAsync(page, "https://gemini.google.com/notebooks/view", CreateBtnSelector);
@@ -81,7 +82,7 @@ public class NotebookPage(
         });
 
     /// <inheritdoc />
-    public Task<string> OpenAsync(string name, int account = 0) =>
+    public Task<string> OpenAsync(string name, int account = 0, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             await NavigateAsync(page, $"https://gemini.google.com/notebooks/view{(account > 0 ? $"?u={account}" : "")}");
@@ -100,24 +101,7 @@ public class NotebookPage(
         });
 
     /// <inheritdoc />
-    public Task<string> OpenUrlAsync(string url) =>
-        RunAsync(async page =>
-        {
-            await NavigateAsync(page, url);
-
-            var currentUrl = page.Url;
-            var isNotebook = Regex.IsMatch(currentUrl, @"/(u/\d+/)?notebook/.+");
-
-            if (isNotebook && !currentUrl.Contains("/app"))
-            {
-                return currentUrl;
-            }
-
-            throw new Exception("The notebook URL is invalid or inaccessible.");
-        });
-
-    /// <inheritdoc />
-    public Task<List<string>> ListAsync(int account = 0) =>
+    public Task<List<string>> ListAsync(int account = 0, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             await NavigateAsync(page, "https://gemini.google.com/notebooks/view", NotebookTitleSelector);
@@ -133,10 +117,41 @@ public class NotebookPage(
         });
 
     /// <inheritdoc />
-    public Task UploadSourcesAsync(List<string> filePaths) =>
+    public Task DeleteAsync(string notebookUrl, CancellationToken cancellationToken = default) =>
+        RunAsync(async page =>
+        {
+            await NavigateAsync(page, "https://gemini.google.com/notebooks/view");
+            var card = page.Locator($"a[href*=\"{notebookUrl}\"], [data-project-id*=\"{notebookUrl}\"]").First;
+            if (await card.CountAsync() > 0)
+            {
+                await card.EvaluateAsync("el => { el.querySelector('[aria-label*=\"Delete\"], button')?.click(); }");
+            }
+        });
+
+    /// <inheritdoc />
+    public Task RenameAsync(string newName, CancellationToken cancellationToken = default) =>
+        RunAsync(async page =>
+        {
+            try
+            {
+                await page.EvaluateAsync(@"(title) => {
+                    const el = document.querySelector('.gds-title-l.title, header h1, .notebook-title');
+                    if (el) {
+                        el.innerText = title;
+                        el.dispatchEvent(new Event('change', { bubbles: true }));
+                        el.dispatchEvent(new Event('blur', { bubbles: true }));
+                    }
+                }", newName);
+            }
+            catch { }
+        });
+
+    /// <inheritdoc />
+    public Task UploadSourcesAsync(List<string> filePaths, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             if (filePaths == null || filePaths.Count == 0) return;
+            Validators.SourceValidator.Validate(filePaths);
 
             if (!await page.IsCurrentlyVisibleAsync(CloseSourcesBtnSelector))
                 await page.ClickVisibleAsync(EditSourcesBtnSelector);
@@ -159,7 +174,7 @@ public class NotebookPage(
         });
 
     /// <inheritdoc />
-    public Task DeleteSourceAsync(string title) =>
+    public Task DeleteSourceAsync(string title, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             if (!await page.IsCurrentlyVisibleAsync(CloseSourcesBtnSelector))
@@ -168,9 +183,7 @@ public class NotebookPage(
                 await page.WaitForSelectorAsync(CloseSourcesBtnSelector);
             }
 
-            var pattern = int.TryParse(title, out _)
-                ? $@"^Copied text \({title}\)$"
-                : $@"^{Regex.Escape(title)}$";
+            var pattern = $@"^{Regex.Escape(title)}$";
 
             var titleLocator = page.Locator(SourceTitleSelector)
                 .Filter(new() { HasTextRegex = new Regex(pattern, RegexOptions.IgnoreCase) }).First;
@@ -184,7 +197,7 @@ public class NotebookPage(
         });
 
     /// <inheritdoc />
-    public Task<List<string>> ListSourcesAsync() =>
+    public Task<List<string>> ListSourcesAsync(CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             if (!await page.IsCurrentlyVisibleAsync(CloseSourcesBtnSelector))
@@ -198,7 +211,7 @@ public class NotebookPage(
         });
 
     /// <inheritdoc />
-    public Task<int> GetSourceCountAsync() =>
+    public Task<int> GetSourceCountAsync(CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             if (!await page.IsCurrentlyVisibleAsync(CloseSourcesBtnSelector))
@@ -210,7 +223,7 @@ public class NotebookPage(
         });
 
     /// <inheritdoc />
-    public Task DeleteAllSourcesAsync() =>
+    public Task DeleteAllSourcesAsync(CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             if (!await page.IsCurrentlyVisibleAsync(CloseSourcesBtnSelector))

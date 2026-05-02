@@ -1,3 +1,4 @@
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace AutobookLMM.Abstractions;
@@ -5,23 +6,20 @@ namespace AutobookLMM.Abstractions;
 /// <summary>
 /// Contract for notebook settings and management.
 /// </summary>
-public interface ISettingsPage
+public interface ISettingsPage : IBasePage
 {
-    /// <summary>Gets the current URL of the page.</summary>
-    Task<string> GetUrlAsync();
-
     /// <summary>
     /// Deletes the current notebook.
     /// </summary>
-    Task DeleteNotebookAsync();
+    Task DeleteNotebookAsync(CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Renames the current notebook.
     /// </summary>
-    Task RenameNotebookAsync(string newName);
+    Task RenameNotebookAsync(string newName, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Updates the system prompt (Custom Instructions) of the notebook.
     /// </summary>
-    Task UpdateSystemPromptAsync(string prompt);
+    Task UpdateSystemPromptAsync(string prompt, CancellationToken cancellationToken = default);
 }

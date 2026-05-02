@@ -34,17 +34,14 @@ public class NotebookChat(
     private int _initialResponseCount;
 
     /// <inheritdoc />
-    public async Task<string> SendMessageAsync(string message, IEnumerable<byte[]>? images = null, Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200)
+    public async Task<string> SendMessageAsync(string message, IEnumerable<byte[]>? images = null, Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200, CancellationToken cancellationToken = default)
     {
-        await SubmitAsync(message, images);
-        return await GetResponseAsync(onChunk, extractionScript, timeoutSeconds, pollingIntervalMs);
+        await SubmitAsync(message, images, cancellationToken);
+        return await GetResponseAsync(onChunk, extractionScript, timeoutSeconds, pollingIntervalMs, cancellationToken);
     }
 
     /// <inheritdoc />
-    public Task NavigateToUrlAsync(string url) => RunAsync(page => NavigateAsync(page, url));
-
-    /// <inheritdoc />
-    public Task<string> GetTitleAsync() =>
+    public Task<string> GetTitleAsync(CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             var locator = page.Locator(ConversationTitleSelector);
@@ -56,7 +53,7 @@ public class NotebookChat(
             return "Untitled Conversation";
         });
 
-    public Task SubmitAsync(string message, IEnumerable<byte[]>? images = null) =>
+    public Task SubmitAsync(string message, IEnumerable<byte[]>? images = null, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             await page.BringToFrontAsync();
@@ -91,7 +88,7 @@ public class NotebookChat(
             await page.Keyboard.PressAsync("Enter");
         });
 
-    public Task TypeMessageAsync(string text, bool pressEnter = false, IEnumerable<byte[]>? images = null) =>
+    public Task TypeMessageAsync(string text, bool pressEnter = false, IEnumerable<byte[]>? images = null, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             await page.BringToFrontAsync();
@@ -124,7 +121,7 @@ public class NotebookChat(
         });
 
     /// <inheritdoc />
-    public Task PasteImagesAsync(IEnumerable<byte[]> images) =>
+    public Task PasteImagesAsync(IEnumerable<byte[]> images, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             await page.BringToFrontAsync();
@@ -149,10 +146,10 @@ public class NotebookChat(
         });
 
     /// <inheritdoc />
-    public async Task<string> GetResponseAsync(Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200)
+    public async Task<string> GetResponseAsync(Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200, CancellationToken cancellationToken = default)
     {
         string lastFullText = "";
-        await foreach (var chunk in StreamResponseAsync(extractionScript, timeoutSeconds, pollingIntervalMs))
+        await foreach (var chunk in StreamResponseAsync(extractionScript, timeoutSeconds, pollingIntervalMs, cancellationToken))
         {
             lastFullText = chunk;
             onChunk?.Invoke(chunk);
@@ -160,9 +157,9 @@ public class NotebookChat(
         return lastFullText;
     }
 
-    public async IAsyncEnumerable<string> StreamResponseAsync(string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200)
+    public async IAsyncEnumerable<string> StreamResponseAsync(string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200, [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        await pageLock.WaitAsync();
+        await pageLock.WaitAsync(cancellationToken);
         try
         {
             var page = await pageFactory();
@@ -239,7 +236,7 @@ public class NotebookChat(
     }
 
     /// <inheritdoc />
-    public Task<List<ChatMetadata>> ListChatsAsync() =>
+    public Task<List<ChatMetadata>> ListChatsAsync(CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             await EnsureInGuideAsync(page);
@@ -272,7 +269,7 @@ public class NotebookChat(
         });
 
     /// <inheritdoc />
-    public Task DeleteChatAsync(string title) =>
+    public Task DeleteChatAsync(string title, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             await EnsureInGuideAsync(page);
@@ -321,7 +318,7 @@ public class NotebookChat(
         });
 
     /// <inheritdoc />
-    public Task<bool> OpenChatByTitleAsync(string title) =>
+    public Task<bool> OpenChatByTitleAsync(string title, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
             await EnsureInGuideAsync(page);

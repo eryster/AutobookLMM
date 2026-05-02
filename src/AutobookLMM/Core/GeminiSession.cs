@@ -47,6 +47,22 @@ public class GeminiSession : IGeminiSession
         Settings = new SettingsPage(GetSettingsPageAsync, _settingsLock, CaptureDebugAsync);
     }
 
+    /// <summary>
+    /// Initializes a new instance of the GeminiSession using the provided options.
+    /// </summary>
+    public GeminiSession(AutobookOptions options) : this(options?.Headless)
+    {
+        if (options != null && !string.IsNullOrEmpty(options.CookiesJson))
+        {
+            string json = options.CookiesJson.Trim();
+            if (!json.StartsWith('[') && !json.StartsWith('{') && File.Exists(json))
+            {
+                json = File.ReadAllText(json);
+            }
+            LoginWithCookiesAsync(json).GetAwaiter().GetResult();
+        }
+    }
+
     /// <inheritdoc />
     public async Task<bool> CheckLoginAsync()
     {
