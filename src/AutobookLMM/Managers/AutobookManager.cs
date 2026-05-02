@@ -194,16 +194,33 @@ public class AutobookManager : IAutobookManager
     {
         await EnsureLoggedInAsync();
 
+        // 0. Close the previous chat tab first to free up the tab
+        try
+        {
+            await _session.Chat.DisposeAsync();
+        }
+        catch { }
+
         // 1. Open the new fresh chat
         var newChat = await _session.OpenChatAsync();
 
         // 2. Use the new chat tab to delete the old one
-        await newChat.DeleteChatAsync(oldChatTitle);
+        try
+        {
+            await newChat.DeleteChatAsync(oldChatTitle);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[RotateChatAsync] Warning: Could not delete old chat '{oldChatTitle}', continuing anyway: {ex.Message}");
+        }
 
-        // 3. Send the first message
+        // 3. Small delay for stability before sending the first message
+        await Task.Delay(3000);
+
+        // 4. Send the first message
         var responseText = await newChat.SendMessageAsync(firstMessage, images);
 
-        // 4. Small delay to let Gemini update the conversation-title element
+        // 5. Small delay to let Gemini update the conversation-title element
         await Task.Delay(1500);
 
         return new ChatMetadata

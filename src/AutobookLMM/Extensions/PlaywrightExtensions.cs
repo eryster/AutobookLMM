@@ -12,7 +12,11 @@ public static class PlaywrightExtensions
     /// </summary>
     public static async Task SmartSettleAsync(this IPage page)
     {
-        await page.WaitForLoadStateAsync(LoadState.NetworkIdle);
+        try
+        {
+            await page.WaitForLoadStateAsync(LoadState.NetworkIdle, new() { Timeout = 2000 });
+        }
+        catch { }
         await Task.Delay(500);
     }
 

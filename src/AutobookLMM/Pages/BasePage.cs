@@ -57,7 +57,7 @@ public abstract class BasePage(
 
     protected async Task NavigateAsync(IPage page, string url, string? waitForSelector = null)
     {
-        await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded });
+        await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 5000 });
         await page.SmartSettleAsync();
         await CheckForGoogleBlocksAsync(page);
 
@@ -72,7 +72,7 @@ public abstract class BasePage(
         try
         {
             var content = await page.ContentAsync();
-            if (content.Contains("incomum", StringComparison.OrdinalIgnoreCase) || 
+            if (content.Contains("incomum", StringComparison.OrdinalIgnoreCase) ||
                 content.Contains("unusual", StringComparison.OrdinalIgnoreCase) ||
                 content.Contains("solveSimpleChallenge", StringComparison.OrdinalIgnoreCase) ||
                 content.Contains("captcha", StringComparison.OrdinalIgnoreCase))

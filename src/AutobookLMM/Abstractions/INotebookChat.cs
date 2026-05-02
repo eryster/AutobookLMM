@@ -13,6 +13,9 @@ public interface INotebookChat : IAsyncDisposable
     /// <summary>Gets the current URL of the chat page.</summary>
     Task<string> GetUrlAsync();
 
+    /// <summary>Navigates the chat tab to the specific URL.</summary>
+    Task NavigateToUrlAsync(string url);
+
     /// <summary>Gets the auto-generated title of the current conversation.</summary>
     Task<string> GetTitleAsync();
 

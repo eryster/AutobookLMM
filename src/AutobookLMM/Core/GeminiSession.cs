@@ -18,6 +18,7 @@ public class GeminiSession : IGeminiSession
     private IPage? _chatPageHandle;
     private IPage? _settingsPageHandle;
     private string? _activeNotebookUrl;
+    public static string? CurrentNotebookUrl { get; set; }
 
     private readonly SemaphoreSlim _notebookLock = new(1, 1);
     private readonly SemaphoreSlim _chatLock = new(1, 1);
@@ -154,12 +155,17 @@ public class GeminiSession : IGeminiSession
     }
 
     /// <inheritdoc />
-    public void SetActiveNotebook(string url) => _activeNotebookUrl = url;
+    public void SetActiveNotebook(string url)
+    {
+        _activeNotebookUrl = url;
+        CurrentNotebookUrl = url;
+    }
 
     /// <inheritdoc />
     public async Task PreloadProjectPagesAsync(string url)
     {
         _activeNotebookUrl = url;
+        CurrentNotebookUrl = url;
         await Task.WhenAll(GetNotebookPageAsync(), GetChatPageAsync(), GetSettingsPageAsync());
     }
 
@@ -167,6 +173,7 @@ public class GeminiSession : IGeminiSession
     public async Task CloseNotebookAsync()
     {
         _activeNotebookUrl = null;
+        CurrentNotebookUrl = null;
         if (_notebookPageHandle != null) await _notebookPageHandle.CloseAsync();
         if (_chatPageHandle != null) await _chatPageHandle.CloseAsync();
         if (_settingsPageHandle != null) await _settingsPageHandle.CloseAsync();
@@ -216,7 +223,7 @@ public class GeminiSession : IGeminiSession
         {
             _chatPageHandle = await context.NewPageAsync();
             _chatPageHandle.Close += (_, _) => _chatPageHandle = null;
-            if (!string.IsNullOrEmpty(_activeNotebookUrl)) await _chatPageHandle.GotoAsync(_activeNotebookUrl);
+            if (!string.IsNullOrEmpty(_activeNotebookUrl)) await _chatPageHandle.GotoAsync(_activeNotebookUrl, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 10000 });
         }
         return _chatPageHandle;
     }

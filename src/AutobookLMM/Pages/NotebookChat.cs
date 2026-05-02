@@ -42,6 +42,9 @@ public class NotebookChat(
     }
 
     /// <inheritdoc />
+    public Task NavigateToUrlAsync(string url) => RunAsync(page => NavigateAsync(page, url));
+
+    /// <inheritdoc />
     public Task<string> GetTitleAsync() =>
         RunAsync(async page =>
         {
@@ -72,11 +75,11 @@ public class NotebookChat(
                 {
                     await page.PasteImageAsync(ChatInputSelector, img);
                 }
-                
+
                 // Wait for all images to finish loading (preview disappears)
                 try
                 {
-                    await page.WaitForSelectorAsync(ImageLoadingPreviewSelector, 
+                    await page.WaitForSelectorAsync(ImageLoadingPreviewSelector,
                         new() { State = WaitForSelectorState.Hidden, Timeout = 10000 });
                 }
                 catch { /* If it never appeared or already disappeared, we continue */ }
@@ -108,7 +111,7 @@ public class NotebookChat(
                 // Wait for all images to finish loading (preview disappears)
                 try
                 {
-                    await page.WaitForSelectorAsync(ImageLoadingPreviewSelector, 
+                    await page.WaitForSelectorAsync(ImageLoadingPreviewSelector,
                         new() { State = WaitForSelectorState.Hidden, Timeout = 10000 });
                 }
                 catch { /* If it never appeared or already disappeared, we continue */ }
@@ -216,28 +219,28 @@ public class NotebookChat(
         RunAsync(async page =>
         {
             await EnsureInGuideAsync(page);
-            
+
             var locators = await page.Locator(ChatTitleSelector).AllAsync();
             var results = new List<ChatMetadata>();
 
             foreach (var loc in locators)
             {
                 var title = await loc.InnerTextAsync();
-                
+
                 // Em NotebookLM, o título geralmente está dentro ou é vizinho do link <a>
                 var link = page.Locator("a").Filter(new() { Has = loc }).First;
                 var href = await link.GetAttributeAsync("href") ?? "";
-                
+
                 // Converte URL relativa em absoluta se necessário
                 if (!string.IsNullOrEmpty(href) && !href.StartsWith("http"))
                 {
                     href = new Uri(new Uri(page.Url), href).ToString();
                 }
 
-                results.Add(new ChatMetadata 
-                { 
-                    Title = title.Trim(), 
-                    Url = href 
+                results.Add(new ChatMetadata
+                {
+                    Title = title.Trim(),
+                    Url = href
                 });
             }
 
@@ -250,25 +253,60 @@ public class NotebookChat(
         {
             await EnsureInGuideAsync(page);
 
-            var chatItem = page.Locator(ChatTitleSelector).Filter(new() { HasText = title }).First;
-            await chatItem.HoverAsync();
+            try
+            {
+                await page.Locator(".project-chat-row-container").First.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 5000 });
+            }
+            catch { }
 
-            var menuBtn = chatItem.Locator(ChatMenuBtnSelector).First;
-            await menuBtn.ClickAsync();
+            var allChats = await page.Locator(".project-chat-row-container").AllAsync();
+            ILocator? chatItem = null;
+            foreach (var loc in allChats)
+            {
+                var txt = await loc.InnerTextAsync();
+                if (txt.Contains(title, StringComparison.OrdinalIgnoreCase))
+                {
+                    chatItem = loc;
+                    break;
+                }
+            }
+
+            if (chatItem == null)
+            {
+                throw new Exception($"Chat with title '{title}' was not found.");
+            }
+
+            await chatItem.HoverAsync();
+            var menuBtn = chatItem.Locator("button").First;
+            try
+            {
+                await menuBtn.EvaluateAsync("el => el.click()");
+            }
+            catch
+            {
+                await menuBtn.ClickAsync(new() { Force = true });
+            }
 
             await page.ClickVisibleAsync(ChatDeleteBtnSelector);
             await page.ClickVisibleAsync(ConfirmButtonSelector);
 
-            await chatItem.WaitForAsync(new() { State = WaitForSelectorState.Hidden });
+            await chatItem.WaitForAsync(new()
+            {
+                State = WaitForSelectorState.Hidden
+            });
         });
 
     private async Task EnsureInGuideAsync(IPage page)
     {
-        // If we are already in a chat (URL contains /app), we need to go back to the notebook root
-        if (page.Url.Contains("/app") || page.Url.Contains("/conversation/"))
+        var notebookUrl = AutobookLMM.Core.GeminiSession.CurrentNotebookUrl;
+        if (string.IsNullOrEmpty(notebookUrl) && page.Url.Contains("/app/"))
         {
-            var notebookUrl = page.Url.Split("/app")[0].Split("/conversation")[0];
-            await page.GotoAsync(notebookUrl, new() { WaitUntil = WaitUntilState.DOMContentLoaded });
+            notebookUrl = page.Url.Replace("/app/", "/notebook/");
+        }
+
+        if (!string.IsNullOrEmpty(notebookUrl) && page.Url.Contains("/app/"))
+        {
+            await page.GotoAsync(notebookUrl, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 10000 });
             await page.SmartSettleAsync();
         }
     }
