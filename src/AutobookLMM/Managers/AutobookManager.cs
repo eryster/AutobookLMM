@@ -27,7 +27,45 @@ public class AutobookManager : IAutobookManager
     public async Task<string> SendMessageAsync(string message, IEnumerable<byte[]>? images = null, Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200)
     {
         await EnsureLoggedInAsync();
-        return await _session.Chat.SendMessageAsync(message, images, onChunk, extractionScript, timeoutSeconds, pollingIntervalMs);
+        string? chatTitle = null;
+        try
+        {
+            chatTitle = await _session.Chat.GetTitleAsync();
+        }
+        catch { }
+
+        try
+        {
+            return await _session.Chat.SendMessageAsync(message, images, onChunk, extractionScript, timeoutSeconds, pollingIntervalMs);
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"[AutobookManager] Error sending message: {ex.Message}. Recovering chat and retrying...");
+            var url = GeminiSession.CurrentNotebookUrl;
+            if (string.IsNullOrEmpty(url)) throw;
+
+            try { await _session.CloseChatAsync(); } catch { }
+
+            if (!string.IsNullOrEmpty(chatTitle) && chatTitle != "Untitled Conversation")
+            {
+                bool opened = await _session.Chat.OpenChatByTitleAsync(chatTitle);
+                if (!opened)
+                {
+                    Console.WriteLine($"[AutobookManager] Chat with title '{chatTitle}' could not be opened.");
+                }
+            }
+
+            await Task.Delay(2000);
+
+            return await _session.Chat.SendMessageAsync(message, images, onChunk, extractionScript, timeoutSeconds, pollingIntervalMs);
+        }
+    }
+
+    /// <inheritdoc />
+    public async Task PasteImagesAsync(IEnumerable<byte[]> images)
+    {
+        await EnsureLoggedInAsync();
+        await _session.Chat.PasteImagesAsync(images);
     }
 
     /// <inheritdoc />

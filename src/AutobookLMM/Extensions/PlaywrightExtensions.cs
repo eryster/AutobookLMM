@@ -29,7 +29,8 @@ public static class PlaywrightExtensions
             const byteNumbers = new Array(byteCharacters.length);
             for (let i = 0; i < byteCharacters.length; i++) byteNumbers[i] = byteCharacters.charCodeAt(i);
             const blob = new Blob([new Uint8Array(byteNumbers)], { type: 'image/png' });
-            const file = new File([blob], 'pasted_image.png', { type: 'image/png' });
+            const fileName = 'pasted_image_' + Date.now() + '.png';
+            const file = new File([blob], fileName, { type: 'image/png' });
             const dt = new DataTransfer();
             dt.items.add(file);
             const event = new ClipboardEvent('paste', { clipboardData: dt, bubbles: true, cancelable: true });

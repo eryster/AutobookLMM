@@ -62,6 +62,9 @@ public interface IGeminiSession : IAsyncDisposable
     /// <summary>Closes the active notebook pages and clears the state.</summary>
     Task CloseNotebookAsync();
 
+    /// <summary>Closes only the active chat tab/page handle.</summary>
+    Task CloseChatAsync();
+
     /// <summary>Wipes the persistent browser profile.</summary>
     Task PurgeProfileAsync();
 

@@ -29,6 +29,11 @@ public interface IAutobookManager : IAsyncDisposable
     Task<string> SendMessageAsync(string message, IEnumerable<byte[]>? images = null, Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200);
 
     /// <summary>
+    /// Pastes images directly into the active chat without submitting the message.
+    /// </summary>
+    Task PasteImagesAsync(IEnumerable<byte[]> images);
+
+    /// <summary>
     /// Uploads the provided files as sources to the active notebook.
     /// </summary>
     Task UploadSourcesAsync(List<string> filePaths);

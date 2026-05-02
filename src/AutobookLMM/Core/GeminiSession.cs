@@ -174,9 +174,21 @@ public class GeminiSession : IGeminiSession
     {
         _activeNotebookUrl = null;
         CurrentNotebookUrl = null;
-        if (_notebookPageHandle != null) await _notebookPageHandle.CloseAsync();
-        if (_chatPageHandle != null) await _chatPageHandle.CloseAsync();
-        if (_settingsPageHandle != null) await _settingsPageHandle.CloseAsync();
+        if (_notebookPageHandle != null) try { await _notebookPageHandle.CloseAsync(); } catch { }
+        if (_chatPageHandle != null) try { await _chatPageHandle.CloseAsync(); } catch { }
+        if (_settingsPageHandle != null) try { await _settingsPageHandle.CloseAsync(); } catch { }
+        _notebookPageHandle = null;
+        _chatPageHandle = null;
+        _settingsPageHandle = null;
+    }
+
+    public async Task CloseChatAsync()
+    {
+        if (_chatPageHandle != null)
+        {
+            try { await _chatPageHandle.CloseAsync(); } catch { }
+            _chatPageHandle = null;
+        }
     }
 
     private async Task<IPage> GetNotebookPageAsync()

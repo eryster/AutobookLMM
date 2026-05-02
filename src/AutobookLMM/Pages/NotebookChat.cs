@@ -25,9 +25,7 @@ public class NotebookChat(
     private const string ConversationTitleSelector = "[data-test-id=\"conversation-title\"]";
 
     // Management Selectors
-    private const string ChatRowContainerSelector = ".project-chat-row-container";
     private const string ChatTitleSelector = "[data-test-id=\"chat-title\"]";
-    private const string ChatMenuBtnSelector = ".menu-button";
     private const string ChatDeleteBtnSelector = "[data-test-id=\"delete-button\"]";
     private const string ConfirmButtonSelector = "[data-test-id=\"confirm-button\"]";
     private const string ImageUploadBtnSelector = "[data-test-id=\"upload-image-button\"], button[aria-label*=\"image\"]";
@@ -122,6 +120,31 @@ public class NotebookChat(
             if (pressEnter)
             {
                 await page.Keyboard.PressAsync("Enter");
+            }
+        });
+
+    /// <inheritdoc />
+    public Task PasteImagesAsync(IEnumerable<byte[]> images) =>
+        RunAsync(async page =>
+        {
+            await page.BringToFrontAsync();
+            var input = page.Locator(ChatInputSelector);
+            await input.WaitForAsync(new() { State = WaitForSelectorState.Visible });
+            await input.FocusAsync();
+
+            if (images != null)
+            {
+                foreach (var img in images)
+                {
+                    await page.PasteImageAsync(ChatInputSelector, img);
+                }
+
+                try
+                {
+                    await page.WaitForSelectorAsync(ImageLoadingPreviewSelector,
+                        new() { State = WaitForSelectorState.Hidden, Timeout = 10000 });
+                }
+                catch { }
             }
         });
 
@@ -256,11 +279,11 @@ public class NotebookChat(
 
             try
             {
-                await page.Locator(ChatRowContainerSelector).First.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 5000 });
+                await page.Locator(".project-chat-row-container").First.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 5000 });
             }
             catch { }
 
-            var allChats = await page.Locator(ChatRowContainerSelector).AllAsync();
+            var allChats = await page.Locator(".project-chat-row-container").AllAsync();
             ILocator? chatItem = null;
             foreach (var loc in allChats)
             {
@@ -305,11 +328,11 @@ public class NotebookChat(
 
             try
             {
-                await page.Locator(ChatRowContainerSelector).First.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 5000 });
+                await page.Locator(".project-chat-row-container").First.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 5000 });
             }
             catch { }
 
-            var allChats = await page.Locator(ChatRowContainerSelector).AllAsync();
+            var allChats = await page.Locator(".project-chat-row-container").AllAsync();
             ILocator? chatItem = null;
             foreach (var loc in allChats)
             {

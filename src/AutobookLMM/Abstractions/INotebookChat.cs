@@ -33,6 +33,9 @@ public interface INotebookChat : IAsyncDisposable
     /// <summary>Types message directly into input field.</summary>
     Task TypeMessageAsync(string text, bool pressEnter = false, IEnumerable<byte[]>? images = null);
 
+    /// <summary>Pastes images directly into the input field without sending the message.</summary>
+    Task PasteImagesAsync(IEnumerable<byte[]> images);
+
     /// <summary>Waits for the current generation to finish and extracts the text.</summary>
     Task<string> GetResponseAsync(Action<string>? onChunk = null, string? extractionScript = null, int timeoutSeconds = 60, int pollingIntervalMs = 200);
 
