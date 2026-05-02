@@ -296,6 +296,40 @@ public class NotebookChat(
             });
         });
 
+    /// <inheritdoc />
+    public Task<bool> OpenChatByTitleAsync(string title) =>
+        RunAsync(async page =>
+        {
+            await EnsureInGuideAsync(page);
+
+            try
+            {
+                await page.Locator(".project-chat-row-container").First.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 5000 });
+            }
+            catch { }
+
+            var allChats = await page.Locator(".project-chat-row-container").AllAsync();
+            ILocator? chatItem = null;
+            foreach (var loc in allChats)
+            {
+                var txt = await loc.InnerTextAsync();
+                if (txt.Contains(title, StringComparison.OrdinalIgnoreCase))
+                {
+                    chatItem = loc;
+                    break;
+                }
+            }
+
+            if (chatItem == null)
+            {
+                return false;
+            }
+
+            await chatItem.ClickAsync();
+            await page.WaitForLoadStateAsync(LoadState.DOMContentLoaded);
+            return true;
+        });
+
     private async Task EnsureInGuideAsync(IPage page)
     {
         var notebookUrl = AutobookLMM.Core.GeminiSession.CurrentNotebookUrl;

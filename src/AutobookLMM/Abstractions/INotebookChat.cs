@@ -46,4 +46,7 @@ public interface INotebookChat : IAsyncDisposable
 
     /// <summary>Deletes a specific chat conversation by its title.</summary>
     Task DeleteChatAsync(string title);
+
+    /// <summary>Opens a specific chat conversation by its title from the summary view.</summary>
+    Task<bool> OpenChatByTitleAsync(string title);
 }
