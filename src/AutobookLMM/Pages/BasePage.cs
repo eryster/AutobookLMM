@@ -58,13 +58,13 @@ public abstract class BasePage(
 
     protected async Task NavigateAsync(IPage page, string url, string? waitForSelector = null)
     {
-        await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 5000 });
+        await page.GotoAsync(url, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 15000 });
         await page.SmartSettleAsync();
         await CheckForGoogleBlocksAsync(page);
 
         if (!string.IsNullOrEmpty(waitForSelector))
         {
-            await page.WaitForSelectorAsync(waitForSelector, new() { State = WaitForSelectorState.Visible, Timeout = 5000 });
+            await page.WaitForSelectorAsync(waitForSelector, new() { State = WaitForSelectorState.Visible, Timeout = 15000 });
         }
     }
 

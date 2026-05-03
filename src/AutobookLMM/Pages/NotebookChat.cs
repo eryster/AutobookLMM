@@ -28,7 +28,6 @@ public class NotebookChat(
     private const string ChatTitleSelector = "[data-test-id=\"chat-title\"]";
     private const string ChatDeleteBtnSelector = "[data-test-id=\"delete-button\"]";
     private const string ConfirmButtonSelector = "[data-test-id=\"confirm-button\"]";
-    private const string ImageUploadBtnSelector = "[data-test-id=\"upload-image-button\"], button[aria-label*=\"image\"]";
     private const string ImageLoadingPreviewSelector = "[data-test-id=\"image-loading-preview\"]";
 
     private int _initialResponseCount;
@@ -76,7 +75,14 @@ public class NotebookChat(
                 try
                 {
                     await page.WaitForSelectorAsync(ImageLoadingPreviewSelector,
-                        new() { State = WaitForSelectorState.Hidden, Timeout = 10000 });
+                        new() { State = WaitForSelectorState.Visible, Timeout = 1500 });
+                }
+                catch { }
+
+                try
+                {
+                    await page.WaitForSelectorAsync(ImageLoadingPreviewSelector,
+                        new() { State = WaitForSelectorState.Hidden, Timeout = 15000 });
                 }
                 catch { /* If it never appeared or already disappeared, we continue */ }
             }
@@ -108,7 +114,14 @@ public class NotebookChat(
                 try
                 {
                     await page.WaitForSelectorAsync(ImageLoadingPreviewSelector,
-                        new() { State = WaitForSelectorState.Hidden, Timeout = 10000 });
+                        new() { State = WaitForSelectorState.Visible, Timeout = 1500 });
+                }
+                catch { }
+
+                try
+                {
+                    await page.WaitForSelectorAsync(ImageLoadingPreviewSelector,
+                        new() { State = WaitForSelectorState.Hidden, Timeout = 15000 });
                 }
                 catch { /* If it never appeared or already disappeared, we continue */ }
             }
@@ -139,10 +152,19 @@ public class NotebookChat(
                 try
                 {
                     await page.WaitForSelectorAsync(ImageLoadingPreviewSelector,
-                        new() { State = WaitForSelectorState.Hidden, Timeout = 10000 });
+                        new() { State = WaitForSelectorState.Visible, Timeout = 1500 });
+                }
+                catch { }
+
+                try
+                {
+                    await page.WaitForSelectorAsync(ImageLoadingPreviewSelector,
+                        new() { State = WaitForSelectorState.Hidden, Timeout = 15000 });
                 }
                 catch { }
             }
+
+
         });
 
     /// <inheritdoc />
@@ -241,6 +263,17 @@ public class NotebookChat(
         {
             await EnsureInGuideAsync(page);
 
+            try
+            {
+                await page.Locator(ChatTitleSelector).First.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 5000 });
+            }
+            catch { }
+            try
+            {
+                await page.Locator(".project-chat-row-container").First.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 2000 });
+            }
+            catch { }
+
             var locators = await page.Locator(ChatTitleSelector).AllAsync();
             var results = new List<ChatMetadata>();
 
@@ -318,6 +351,102 @@ public class NotebookChat(
         });
 
     /// <inheritdoc />
+    public Task DeleteAllChatsAsync(CancellationToken cancellationToken = default) =>
+        RunAsync(async page =>
+        {
+            await EnsureInGuideAsync(page);
+
+            try
+            {
+                await page.Locator(".project-chat-row-container").First.WaitForAsync(new() { State = WaitForSelectorState.Visible, Timeout = 5000 });
+            }
+            catch { }
+
+            for (int i = 0; i < 30; i++)
+            {
+                var chatRows = await page.Locator(".project-chat-row-container").AllAsync();
+                if (chatRows.Count == 0) break;
+
+                var chatItem = chatRows[0];
+                try
+                {
+                    await chatItem.HoverAsync();
+                    
+                    var menuBtn = chatItem.Locator("button").First;
+                    try { await menuBtn.EvaluateAsync("el => el.click()"); }
+                    catch { await menuBtn.ClickAsync(new() { Force = true }); }
+
+                    var deleteSelectors = new[]
+                    {
+                        "[data-test-id=\"delete-button\"]",
+                        "button:has-text(\"Delete\")",
+                        "button:has-text(\"Excluir\")",
+                        "[aria-label*=\"Delete\"]",
+                        "[aria-label*=\"Excluir\"]",
+                        ".mat-menu-item:has-text(\"Excluir\")",
+                        ".mat-menu-item:has-text(\"Delete\")"
+                    };
+
+                    bool clickedDelete = false;
+                    foreach (var sel in deleteSelectors)
+                    {
+                        try
+                        {
+                            var loc = page.Locator(sel).First;
+                            if (await loc.IsVisibleAsync())
+                            {
+                                await loc.ClickAsync(new() { Force = true });
+                                clickedDelete = true;
+                                break;
+                            }
+                        }
+                        catch { }
+                    }
+                    if (!clickedDelete)
+                    {
+                        await page.ClickVisibleAsync(ChatDeleteBtnSelector, 3000);
+                    }
+
+                    var confirmSelectors = new[]
+                    {
+                        "[data-test-id=\"confirm-button\"]",
+                        "button:has-text(\"Delete\")",
+                        "button:has-text(\"Excluir\")",
+                        "button:has-text(\"Confirm\")",
+                        "button:has-text(\"Confirmar\")",
+                        "button:has-text(\"Apagar\")"
+                    };
+
+                    bool clickedConfirm = false;
+                    foreach (var sel in confirmSelectors)
+                    {
+                        try
+                        {
+                            var loc = page.Locator(sel).First;
+                            if (await loc.IsVisibleAsync())
+                            {
+                                await loc.ClickAsync(new() { Force = true });
+                                clickedConfirm = true;
+                                break;
+                            }
+                        }
+                        catch { }
+                    }
+                    if (!clickedConfirm)
+                    {
+                        await page.ClickVisibleAsync(ConfirmButtonSelector, 3000);
+                    }
+
+                    await Task.Delay(1000);
+                }
+                catch
+                {
+                    break;
+                }
+            }
+        });
+
+    /// <inheritdoc />
     public Task<bool> OpenChatByTitleAsync(string title, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
@@ -359,10 +488,13 @@ public class NotebookChat(
             notebookUrl = page.Url.Replace("/app/", "/notebook/");
         }
 
-        if (!string.IsNullOrEmpty(notebookUrl) && page.Url.Contains("/app/"))
+        if (!string.IsNullOrEmpty(notebookUrl))
         {
-            await page.GotoAsync(notebookUrl, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 10000 });
-            await page.SmartSettleAsync();
+            if (page.Url.Contains("/app/") || page.Url == "about:blank" || !page.Url.Contains("/notebook/"))
+            {
+                await page.GotoAsync(notebookUrl, new() { WaitUntil = WaitUntilState.DOMContentLoaded, Timeout = 10000 });
+                await page.SmartSettleAsync();
+            }
         }
     }
 

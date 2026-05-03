@@ -45,6 +45,9 @@ public interface INotebookChat : IBasePage, IAsyncDisposable
     /// <summary>Deletes a specific chat conversation by its title.</summary>
     Task DeleteChatAsync(string title, CancellationToken cancellationToken = default);
 
+    /// <summary>Deletes all chat conversations in the current notebook.</summary>
+    Task DeleteAllChatsAsync(CancellationToken cancellationToken = default);
+
     /// <summary>Opens a specific chat conversation by its title from the summary view.</summary>
     Task<bool> OpenChatByTitleAsync(string title, CancellationToken cancellationToken = default);
 }

@@ -42,7 +42,7 @@ public static class PlaywrightExtensions
     /// <summary>
     /// Wait for a selector to be visible and clicks it.
     /// </summary>
-    public static async Task ClickVisibleAsync(this IPage page, string selector, int timeoutMs = 5000)
+    public static async Task ClickVisibleAsync(this IPage page, string selector, int timeoutMs = 15000)
     {
         var locator = page.Locator(selector).Last;
         await locator.WaitForAsync(new() { Timeout = timeoutMs, State = WaitForSelectorState.Visible });

@@ -227,15 +227,21 @@ public class AutobookManager : IAutobookManager
     {
         await EnsureLoggedInAsync();
 
-        // We open a temporary background chat tab to perform the cleanup.
-        // This ensures any active user conversation in another tab is NOT disturbed.
-        await using var worker = await _session.OpenChatAsync();
-
-        var chats = await worker.ListChatsAsync();
-
-        foreach (var chat in chats)
+        try
         {
-            await worker.DeleteChatAsync(chat.Title);
+            await _session.Chat.DeleteAllChatsAsync(cancellationToken);
+        }
+        catch (Exception ex)
+        {
+            try
+            {
+                await using var worker = await _session.OpenChatAsync();
+                await worker.DeleteAllChatsAsync(cancellationToken);
+            }
+            catch (Exception innerEx)
+            {
+                throw new Exception($"Failed to clear chat history using direct and fallback methods. Primary: {ex.Message}. Fallback: {innerEx.Message}", innerEx);
+            }
         }
     }
 
