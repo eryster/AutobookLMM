@@ -55,8 +55,6 @@ public class NotebookChat(
     public Task SubmitAsync(string message, IEnumerable<byte[]>? images = null, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
-            await page.BringToFrontAsync();
-
             _initialResponseCount = await page.Locator(ResponseContentSelector).CountAsync();
 
             var input = page.Locator(ChatInputSelector);
@@ -97,7 +95,6 @@ public class NotebookChat(
     public Task TypeMessageAsync(string text, bool pressEnter = false, IEnumerable<byte[]>? images = null, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
-            await page.BringToFrontAsync();
             var input = page.Locator(ChatInputSelector);
             await input.WaitForAsync(new() { State = WaitForSelectorState.Visible });
             await input.FocusAsync();
@@ -137,7 +134,6 @@ public class NotebookChat(
     public Task PasteImagesAsync(IEnumerable<byte[]> images, CancellationToken cancellationToken = default) =>
         RunAsync(async page =>
         {
-            await page.BringToFrontAsync();
             var input = page.Locator(ChatInputSelector);
             await input.WaitForAsync(new() { State = WaitForSelectorState.Visible });
             await input.FocusAsync();

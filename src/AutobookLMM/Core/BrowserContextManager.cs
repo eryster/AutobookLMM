@@ -67,7 +67,6 @@ public class BrowserContextManager : IAsyncDisposable
                         "--enable-gpu",
                         "--ignore-gpu-blocklist",
                         "--enable-webgl",
-                        "--start-maximized",
                         "--disable-extensions",
                         "--disable-plugins-discovery",
                         "--disable-infobars"
@@ -94,21 +93,81 @@ public class BrowserContextManager : IAsyncDisposable
                 _currentHeadless = headless;
                 _context = await _browser.NewContextAsync(new BrowserNewContextOptions
                 {
-                    UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+                    UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
                     ViewportSize = null,
-                    Locale = locale
+                    Locale = locale,
+                    ExtraHTTPHeaders = new Dictionary<string, string>
+                    {
+                        { "sec-ch-ua", "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"" },
+                        { "sec-ch-ua-mobile", "?0" },
+                        { "sec-ch-ua-platform", "\"Windows\"" },
+                        { "sec-ch-ua-platform-version", "\"15.0.0\"" },
+                        { "sec-ch-ua-model", "\"\"" }
+                    }
                 });
 
                 await _context.AddInitScriptAsync($@"
+                    // Hide automation
                     Object.defineProperty(navigator, 'webdriver', {{ get: () => undefined }});
-                    window.chrome = {{ runtime: {{}}, loadTimes: function(){{}}, csi: function(){{}}, app: {{}} }};
-                    Object.defineProperty(navigator, 'plugins', {{ get: () => [1, 2, 3, 4, 5] }});
+                    
+                    // Mock Chrome specific properties
+                    window.chrome = {{
+                        runtime: {{}},
+                        loadTimes: function() {{ return {{}}; }},
+                        csi: function() {{ return {{}}; }},
+                        app: {{
+                            isInstalled: false,
+                            InstallState: {{ DISABLED: 'disabled', INSTALLED: 'installed', NOT_INSTALLED: 'not_installed' }},
+                            RunningState: {{ CANNOT_RUN: 'cannot_run', READY_TO_RUN: 'ready_to_run', RUNNING: 'running' }}
+                        }}
+                    }};
+
+                    // Enhanced Plugins spoofing
+                    const mockPlugins = [
+                        {{ name: 'PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }},
+                        {{ name: 'Chrome PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }},
+                        {{ name: 'Chromium PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }},
+                        {{ name: 'Microsoft Edge PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }},
+                        {{ name: 'WebKit built-in PDF', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }}
+                    ];
+                    Object.defineProperty(navigator, 'plugins', {{ get: () => mockPlugins }});
+
+                    // Languages & Hardware
                     Object.defineProperty(navigator, 'languages', {{ get: () => ['{locale}', '{baseLang}', 'en-US'] }});
+                    Object.defineProperty(navigator, 'hardwareConcurrency', {{ get: () => 8 }});
+                    Object.defineProperty(navigator, 'deviceMemory', {{ get: () => 8 }});
+
+                    // Permissions override
                     const originalQuery = window.navigator.permissions.query;
                     window.navigator.permissions.query = (params) =>
                         params.name === 'notifications'
                             ? Promise.resolve({{ state: Notification.permission }})
                             : originalQuery(params);
+
+                    // WebGL Fingerprint spoofing
+                    const getParameter = WebGLRenderingContext.prototype.getParameter;
+                    WebGLRenderingContext.prototype.getParameter = function(parameter) {{
+                        // UNMASKED_VENDOR_WEBGL
+                        if (parameter === 37445) return 'Google Inc. (NVIDIA)';
+                        // UNMASKED_RENDERER_WEBGL
+                        if (parameter === 37446) return 'ANGLE (NVIDIA, NVIDIA GeForce RTX 3080 Direct3D11 vs_5_0 ps_5_0, D3D11)';
+                        return getParameter.apply(this, arguments);
+                    }};
+
+                    // Broken iframes fix
+                    const iframeWindow = HTMLIFrameElement.prototype.contentWindow;
+                    Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {{
+                        get: function() {{
+                            const window = iframeWindow.apply(this);
+                            if (this.srcdoc) return window;
+                            try {{
+                                if (window.navigator.webdriver !== undefined) {{
+                                    Object.defineProperty(window.navigator, 'webdriver', {{ get: () => undefined }});
+                                }}
+                            }} catch (e) {{}}
+                            return window;
+                        }}
+                    }});
                 ");
 
                 _context.SetDefaultTimeout(5000);
