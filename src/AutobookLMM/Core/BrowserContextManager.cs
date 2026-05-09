@@ -96,6 +96,8 @@ public class BrowserContextManager : IAsyncDisposable
                     UserAgent = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
                     ViewportSize = null,
                     Locale = locale,
+                    TimezoneId = "America/Sao_Paulo",
+                    ColorScheme = ColorScheme.Dark, // Força modo escuro para o Google
                     ExtraHTTPHeaders = new Dictionary<string, string>
                     {
                         { "sec-ch-ua", "\"Google Chrome\";v=\"131\", \"Chromium\";v=\"131\", \"Not_A Brand\";v=\"24\"" },
@@ -107,10 +109,12 @@ public class BrowserContextManager : IAsyncDisposable
                 });
 
                 await _context.AddInitScriptAsync($@"
-                    // Hide automation
+                    // 1. Hide automation & Platform
                     Object.defineProperty(navigator, 'webdriver', {{ get: () => undefined }});
+                    Object.defineProperty(navigator, 'platform', {{ get: () => 'Win32' }});
+                    Object.defineProperty(navigator, 'vendor', {{ get: () => 'Google Inc.' }});
                     
-                    // Mock Chrome specific properties
+                    // 2. Mock Chrome specific properties
                     window.chrome = {{
                         runtime: {{}},
                         loadTimes: function() {{ return {{}}; }},
@@ -122,48 +126,55 @@ public class BrowserContextManager : IAsyncDisposable
                         }}
                     }};
 
-                    // Enhanced Plugins spoofing
-                    const mockPlugins = [
-                        {{ name: 'PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }},
-                        {{ name: 'Chrome PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }},
-                        {{ name: 'Chromium PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }},
-                        {{ name: 'Microsoft Edge PDF Viewer', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }},
-                        {{ name: 'WebKit built-in PDF', filename: 'internal-pdf-viewer', description: 'Portable Document Format' }}
-                    ];
-                    Object.defineProperty(navigator, 'plugins', {{ get: () => mockPlugins }});
-
-                    // Languages & Hardware
+                    // 3. Realistic Hardware & Screen
                     Object.defineProperty(navigator, 'languages', {{ get: () => ['{locale}', '{baseLang}', 'en-US'] }});
-                    Object.defineProperty(navigator, 'hardwareConcurrency', {{ get: () => 8 }});
-                    Object.defineProperty(navigator, 'deviceMemory', {{ get: () => 8 }});
+                    Object.defineProperty(navigator, 'hardwareConcurrency', {{ get: () => 12 }});
+                    Object.defineProperty(navigator, 'deviceMemory', {{ get: () => 16 }});
+                    Object.defineProperty(screen, 'width', {{ get: () => 1920 }});
+                    Object.defineProperty(screen, 'height', {{ get: () => 1080 }});
 
-                    // Permissions override
+                    // 4. Battery Spoofing
+                    if (!navigator.getBattery) {{
+                        navigator.getBattery = () => Promise.resolve({{
+                            charging: true, level: 1, chargingTime: 0, dischargingTime: Infinity
+                        }});
+                    }}
+
+                    // 5. Permissions override (Consistent state)
                     const originalQuery = window.navigator.permissions.query;
                     window.navigator.permissions.query = (params) =>
                         params.name === 'notifications'
                             ? Promise.resolve({{ state: Notification.permission }})
                             : originalQuery(params);
 
-                    // WebGL Fingerprint spoofing
+                    // 6. WebGL Spoofing (RTX 3070)
                     const getParameter = WebGLRenderingContext.prototype.getParameter;
                     WebGLRenderingContext.prototype.getParameter = function(parameter) {{
-                        // UNMASKED_VENDOR_WEBGL
                         if (parameter === 37445) return 'Google Inc. (NVIDIA)';
-                        // UNMASKED_RENDERER_WEBGL
-                        if (parameter === 37446) return 'ANGLE (NVIDIA, NVIDIA GeForce RTX 3080 Direct3D11 vs_5_0 ps_5_0, D3D11)';
+                        if (parameter === 37446) return 'ANGLE (NVIDIA, NVIDIA GeForce RTX 3070 Direct3D11 vs_5_0 ps_5_0, D3D11)';
                         return getParameter.apply(this, arguments);
                     }};
 
-                    // Broken iframes fix
+                    // 7. Subtle Canvas Noise (Breaks simple fingerprinting)
+                    const originalGetImageData = CanvasRenderingContext2D.prototype.getImageData;
+                    CanvasRenderingContext2D.prototype.getImageData = function() {{
+                        const res = originalGetImageData.apply(this, arguments);
+                        if (res.data.length > 0) {{
+                            res.data[0] = res.data[0] ^ 1; // Tiny noise bit
+                        }}
+                        return res;
+                    }};
+
+                    // 8. Iframe protection
                     const iframeWindow = HTMLIFrameElement.prototype.contentWindow;
                     Object.defineProperty(HTMLIFrameElement.prototype, 'contentWindow', {{
                         get: function() {{
                             const window = iframeWindow.apply(this);
-                            if (this.srcdoc) return window;
                             try {{
                                 if (window.navigator.webdriver !== undefined) {{
                                     Object.defineProperty(window.navigator, 'webdriver', {{ get: () => undefined }});
-                                }}
+                                    Object.defineProperty(window.navigator, 'platform', {{ get: () => 'Win32' }});
+                                }};
                             }} catch (e) {{}}
                             return window;
                         }}
